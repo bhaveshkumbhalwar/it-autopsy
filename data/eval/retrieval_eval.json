@@ -1,0 +1,20 @@
+{
+  "description": "Hand-written retrieval queries written against the curated knowledge base. Expected document IDs come from the KB itself, not from model output. Queries marked answerable=false should return no evidence (the KB cannot answer them).",
+  "min_score": 0.18,
+  "queries": [
+    {"id": "wifi-no-internet", "query": "Mac Wi-Fi connected but no internet", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-check-connection"]},
+    {"id": "dhcp-lease", "query": "renew DHCP lease on Mac", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-restart"]},
+    {"id": "date-time", "query": "Mac date and time wrong network", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-datetime"]},
+    {"id": "vpn", "query": "VPN blocking internet on macOS", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-vpn"]},
+    {"id": "router", "query": "Wi-Fi router firmware update", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-router"]},
+    {"id": "wireless-diagnostics", "query": "Wireless Diagnostics Mac", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-diagnostics"]},
+    {"id": "ipconfig", "query": "Windows ipconfig /all check DNS settings", "os": "windows", "answerable": true, "expected_doc_ids": ["ms-dns-client-ipconfig"]},
+    {"id": "ping-dns", "query": "ping DNS server Windows", "os": "windows", "answerable": true, "expected_doc_ids": ["ms-dns-client-ping-dns"]},
+    {"id": "nslookup", "query": "nslookup test DNS resolution", "os": "windows", "answerable": true, "expected_doc_ids": ["ms-dns-client-nslookup"]},
+    {"id": "flush-cache", "query": "flush DNS cache displaydns", "os": "windows", "answerable": true, "expected_doc_ids": ["ms-dns-client-cache"]},
+    {"id": "outlook-send", "query": "Outlook mailbox cannot send email", "os": "windows", "answerable": false, "expected_doc_ids": []},
+    {"id": "printer-jam", "query": "office printer jammed needs toner", "os": "unknown", "answerable": false, "expected_doc_ids": []},
+    {"id": "loud-fan", "query": "my laptop fan is loud", "os": "unknown", "answerable": false, "expected_doc_ids": []},
+    {"id": "shared-drive-password", "query": "password reset for shared drive", "os": "windows", "answerable": false, "expected_doc_ids": []}
+  ]
+}

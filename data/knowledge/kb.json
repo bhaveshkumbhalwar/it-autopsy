@@ -1,0 +1,122 @@
+[
+  {
+    "id": "apple-wifi-101588-check-connection",
+    "title": "Check Wi-Fi connection first",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/en-in/101588",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "wifi-connectivity",
+    "text": "Ensure the Mac is connected to a Wi-Fi network and that the network allows internet access. If connection to the network is difficult, follow Apple's general Wi-Fi connection guidance before troubleshooting internet reachability.",
+    "tags": ["wifi", "connection", "network"]
+  },
+  {
+    "id": "apple-wifi-101588-restart",
+    "title": "Restart Mac to renew DHCP lease",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/en-in/101588",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "wifi-connectivity",
+    "text": "Restarting the Mac can renew the IP address assigned by the network (DHCP lease). If the lease expired or the address is in use, the Mac may get a new address. A manual DHCP lease renewal is also possible.",
+    "tags": ["wifi", "dhcp", "restart"]
+  },
+  {
+    "id": "apple-wifi-101588-datetime",
+    "title": "Check date and time",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/en-in/101588",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "wifi-connectivity",
+    "text": "Make sure the date and time are set correctly on the Mac. Incorrect time can interfere with some network services and security checks.",
+    "tags": ["wifi", "time", "date"]
+  },
+  {
+    "id": "apple-wifi-101588-vpn",
+    "title": "Check VPN or security software",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/en-in/101588",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "wifi-connectivity",
+    "text": "VPN or other software that monitors or interacts with network connections can block internet access. Check whether such software is affecting connectivity.",
+    "tags": ["wifi", "vpn", "security"]
+  },
+  {
+    "id": "apple-wifi-101588-router",
+    "title": "Check the Wi-Fi router",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/en-in/101588",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "wifi-connectivity",
+    "text": "If you manage the router, install the latest firmware updates. Restarting the router and using Apple's recommended router settings can help. If issues persist across networks, contact the internet service provider or network administrator.",
+    "tags": ["wifi", "router", "firmware"]
+  },
+  {
+    "id": "apple-wifi-101588-diagnostics",
+    "title": "Use built-in Wi-Fi diagnostics",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/en-in/101588",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "wifi-connectivity",
+    "text": "Look for Wi-Fi Recommendations in Control Centre or the menu bar. Option-click the Wi-Fi icon and choose Open Wireless Diagnostics to analyze the wireless environment. These features may not be available for personal hotspots or certain enterprise security protocols such as WPA/WPA2 Enterprise.",
+    "tags": ["wifi", "diagnostics", "wireless"]
+  },
+  {
+    "id": "ms-dns-client-ipconfig",
+    "title": "Check IP configuration on Windows DNS client",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://learn.microsoft.com/en-us/windows-server/networking/dns/troubleshoot/troubleshoot-dns-client",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "dns-client",
+    "text": "On a Windows client, run ipconfig /all as administrator to verify IP address, subnet mask, default gateway, DNS servers and DNS suffix. If configuration is invalid, renew with ipconfig /renew (DHCP) or correct static settings.",
+    "tags": ["dns", "ipconfig", "windows"]
+  },
+  {
+    "id": "ms-dns-client-ping-dns",
+    "title": "Test reachability to DNS server",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://learn.microsoft.com/en-us/windows-server/networking/dns/troubleshoot/troubleshoot-dns-client",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "dns-client",
+    "text": "Ping the preferred DNS server by IP address to test network reachability. If it does not respond, the issue is more likely network connectivity between client and DNS servers. ICMP traffic must be allowed through the firewall for ping to work.",
+    "tags": ["dns", "ping", "connectivity"]
+  },
+  {
+    "id": "ms-dns-client-nslookup",
+    "title": "Test DNS resolution with nslookup",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://learn.microsoft.com/en-us/windows-server/networking/dns/troubleshoot/troubleshoot-dns-client",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "dns-client",
+    "text": "Use nslookup to test name resolution without the client's DNS cache. Test short name, FQDN (with trailing period), the DNS server itself, a failing internal record and an external name such as bing.com. Ensure the DNS suffix is configured correctly if short names fail but FQDNs resolve.",
+    "tags": ["dns", "nslookup", "resolution"]
+  },
+  {
+    "id": "ms-dns-client-cache",
+    "title": "Check and flush DNS resolver cache",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://learn.microsoft.com/en-us/windows-server/networking/dns/troubleshoot/troubleshoot-dns-client",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "dns-client",
+    "text": "Run ipconfig /displaydns to inspect cached entries. If a cached negative response is shown for the failing name, clear the cache with ipconfig /flushdns and retest. Note: flushdns changes state and should be treated as guidance, not an automatic action.",
+    "tags": ["dns", "cache", "ipconfig"]
+  }
+]

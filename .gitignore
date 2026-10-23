@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+.venv-*/
+venv/
+env/
+
+# Secrets
+.env
+.env.local
+.streamlit/secrets.toml
+
+# Data (never commit datasets)
+data/raw/
+data/processed/
+*.parquet
+
+# Models and generated artefacts
+models/
+reports/*.json
+reports/*.md
+reports/*.png
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.sqlite3
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

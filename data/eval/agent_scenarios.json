@@ -1,0 +1,66 @@
+{
+  "description": "Agent behaviour scenarios. Expectations are properties of the loop (which tools ran, whether it escalated, priority rules), not phrases copied from the output. Category is recorded but only asserted where the dataset label is unambiguous.",
+  "scenarios": [
+    {
+      "id": "mac-wifi",
+      "text": "My Mac connects to Wi-Fi but has no internet access",
+      "os": "macos",
+      "expect_priority": "medium",
+      "expect_escalated": false,
+      "expect_stopped_reason": "observations_complete",
+      "must_call_tools": ["sim_get_wifi_status", "sim_get_dns_config"],
+      "must_not_call_tools": ["macos_wifi_status"],
+      "expect_min_evidence": 1
+    },
+    {
+      "id": "windows-dns",
+      "text": "Windows DNS resolution failing for internal site",
+      "os": "windows",
+      "expect_priority": "medium",
+      "expect_escalated": false,
+      "expect_first_tool": "sim_get_dns_config",
+      "must_call_tools": ["sim_get_dns_config", "sim_ping_host"],
+      "must_not_call_tools": ["macos_dns_config"],
+      "expect_min_evidence": 1
+    },
+    {
+      "id": "security-ransomware",
+      "text": "My laptop has ransomware and files are encrypted",
+      "os": "macos",
+      "expect_priority": "high",
+      "expect_escalated": true,
+      "expect_stopped_reason": "security_concern",
+      "expect_results": 0
+    },
+    {
+      "id": "no-evidence-printer",
+      "text": "My office printer is jammed and needs toner",
+      "os": "unknown",
+      "expect_priority": "medium",
+      "expect_escalated": true,
+      "expect_stopped_reason": "insufficient_evidence",
+      "expect_results": 0
+    },
+    {
+      "id": "broad-impact",
+      "text": "All users cannot work because of an email outage",
+      "os": "windows",
+      "expect_priority": "high",
+      "expect_escalated": true
+    },
+    {
+      "id": "outlook-gap",
+      "text": "Outlook mailbox cannot send email",
+      "os": "windows",
+      "expect_escalated": true,
+      "expect_stopped_reason": "insufficient_evidence"
+    },
+    {
+      "id": "mac-dns-gap",
+      "text": "Mac internal DNS name not resolving",
+      "os": "macos",
+      "expect_escalated": true,
+      "expect_stopped_reason": "insufficient_evidence"
+    }
+  ]
+}
