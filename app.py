@@ -3,7 +3,7 @@
 The UI is a thin shell over the same deterministic pipeline used by the tests
 and evaluation. All rendering goes through Streamlit's escaping (no
 ``unsafe_allow_html``), and user/ticket text is never interpreted as markup or
-instructions.
+instructions..
 """
 
 from __future__ import annotations
