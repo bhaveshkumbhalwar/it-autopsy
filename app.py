@@ -67,7 +67,7 @@ def _render_run(run: dict) -> None:
     if run["evidence"]:
         for e in run["evidence"]:
             st.markdown(
-                f"- **{e['title']}** — {e['source']} — score {e['score']:.3f}  \n"
+                f"- **{E['title']}** — {e['source']} — score {e['score']:.3f}  \n"
                 f"  <{e['url']}>  \n  {e['citation']}",
                 unsafe_allow_html=False,
             )
