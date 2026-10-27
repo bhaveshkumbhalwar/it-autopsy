@@ -8,7 +8,7 @@ expected output is what the project actually produced.
 ```bash
 cd /Users/bhavesh/fai_mini_project
 .venv/bin/python --version        # Python 3.14.6
-.venv/bin/python -m pytest -q     # 78 passed
+.venv/bin/python -m pytest -q     # 86 passed
 ```
 
 ## 1. Show the agent loop without the UI
@@ -121,15 +121,20 @@ escalated. This is the anti-hallucination behaviour.
 Open <http://localhost:8501>. In **New case**:
 
 1. Enter *"My Mac connects to Wi-Fi but has no internet access"*, OS `macos`,
-   run. Show category/priority, cited Apple evidence, decision trace, simulated
-   observations, and the confirmation buttons.
-2. Enter *"My office printer is jammed"*, run. Show the escalation handoff with
-   symptoms, sources attempted, and `not_attempted_reason`.
-3. Open **Cases** to show the persisted, redacted event log.
-4. Open **Evaluation** to show the real metrics (hybrid accuracy 0.8356,
+   run. Show category/priority, cited Apple evidence, labelled simulated
+   observations, next steps, and the confirmation buttons.
+2. Enter *"My MacBook's Bluetooth is turned on, but my wireless headphones are
+   not connecting"*, OS `macos`, run. Show Apple Bluetooth guidance and explain
+   that no Bluetooth diagnostic tool or device observation is available.
+3. Enter *"My office printer is jammed"*, run. Show the readable escalation
+   summary with symptoms, sources, attempted actions, and the plain-English
+   reason.
+4. Open **Cases** to show the persisted, redacted event log.
+5. Open **Admin / Diagnostics → Evaluation** to show the real metrics (hybrid accuracy 0.8356,
    macro-F1 0.8017; base model accuracy 0.7473, macro-F1 0.6449; EOL-rule
    caveat called out).
-5. Open **Safety** to show the closed allowlist and approval flags.
+6. Open **Admin / Diagnostics → Safety** to show the closed allowlist and
+   approval flags.
 
 ## 6. Regenerate all metrics
 
@@ -142,7 +147,7 @@ Expected summary line:
 
 ```text
 classification acc=0.8356, retrieval hit@1=1.0000,
-agent 7/7, security 16/16, robustness 12/12
+agent 8/8, security 16/16, robustness 12/12
 ```
 
 ## Talking points

@@ -11,9 +11,17 @@ from src import config
 
 
 # Each entry is the complete allowlist. Anything not listed here cannot run.
+#
+# ``topic``   — troubleshooting domain this tool is relevant to.  The planner
+#               uses this to reject tools that don't match the detected issue
+#               topic.  A set of topics that imply network diagnostics:
+#               {"wifi", "dns", "network", "vpn"}.
+# ``purpose`` — plain-English one-liner shown in the UI tool table.
 ALLOWED_TOOLS: dict[str, dict] = {
     "sim_get_wifi_status": {
         "risk": "read_only",
+        "topic": "wifi",
+        "purpose": "Observe simulated Wi-Fi connection state (SSID, IP, gateway).",
         "os": [config.OS_MACOS, config.OS_WINDOWS, config.OS_UNKNOWN],
         "simulated": True,
         "requires_approval": False,
@@ -22,6 +30,8 @@ ALLOWED_TOOLS: dict[str, dict] = {
     },
     "sim_get_dns_config": {
         "risk": "read_only",
+        "topic": "dns",
+        "purpose": "Observe simulated DNS server configuration.",
         "os": [config.OS_MACOS, config.OS_WINDOWS, config.OS_UNKNOWN],
         "simulated": True,
         "requires_approval": False,
@@ -30,6 +40,8 @@ ALLOWED_TOOLS: dict[str, dict] = {
     },
     "sim_ping_host": {
         "risk": "read_only",
+        "topic": "network",
+        "purpose": "Test simulated network reachability to a hostname.",
         "os": [config.OS_MACOS, config.OS_WINDOWS, config.OS_UNKNOWN],
         "simulated": True,
         "requires_approval": False,
@@ -38,14 +50,38 @@ ALLOWED_TOOLS: dict[str, dict] = {
     },
     "sim_check_vpn": {
         "risk": "read_only",
+        "topic": "vpn",
+        "purpose": "Check whether simulated VPN/proxy software is active.",
         "os": [config.OS_MACOS, config.OS_WINDOWS, config.OS_UNKNOWN],
         "simulated": True,
         "requires_approval": False,
         "params": {},
         "description": "Simulated VPN/proxy inspection.",
     },
+    "sim_get_system_resources": {
+        "risk": "read_only",
+        "topic": "performance",
+        "purpose": "Observe simulated CPU, memory and disk usage.",
+        "os": [config.OS_MACOS, config.OS_WINDOWS, config.OS_UNKNOWN],
+        "simulated": True,
+        "requires_approval": False,
+        "params": {},
+        "description": "Simulated system resource observation.",
+    },
+    "macos_system_resources": {
+        "risk": "read_only",
+        "topic": "performance",
+        "purpose": "Read real memory statistics via vm_stat (macOS only, opt-in + approval).",
+        "os": [config.OS_MACOS],
+        "simulated": False,
+        "requires_approval": True,
+        "params": {},
+        "description": "Read memory statistics via vm_stat (read-only, opt-in + approval).",
+    },
     "sim_renew_dhcp_lease": {
         "risk": "state_changing",
+        "topic": "network",
+        "purpose": "Simulate DHCP lease renewal (requires explicit approval; never executes for real).",
         "os": [config.OS_MACOS, config.OS_WINDOWS, config.OS_UNKNOWN],
         "simulated": True,
         "requires_approval": True,
@@ -54,6 +90,8 @@ ALLOWED_TOOLS: dict[str, dict] = {
     },
     "macos_wifi_status": {
         "risk": "read_only",
+        "topic": "wifi",
+        "purpose": "Read real Wi-Fi info via system_profiler (macOS only, opt-in + approval).",
         "os": [config.OS_MACOS],
         "simulated": False,
         "requires_approval": True,
@@ -62,6 +100,8 @@ ALLOWED_TOOLS: dict[str, dict] = {
     },
     "macos_dns_config": {
         "risk": "read_only",
+        "topic": "dns",
+        "purpose": "Read real DNS configuration via scutil (macOS only, opt-in + approval).",
         "os": [config.OS_MACOS],
         "simulated": False,
         "requires_approval": True,
@@ -70,6 +110,8 @@ ALLOWED_TOOLS: dict[str, dict] = {
     },
     "macos_network_info": {
         "risk": "read_only",
+        "topic": "network",
+        "purpose": "Read real network interface info via networksetup (macOS only, opt-in + approval).",
         "os": [config.OS_MACOS],
         "simulated": False,
         "requires_approval": True,

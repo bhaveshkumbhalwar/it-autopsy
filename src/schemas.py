@@ -19,6 +19,77 @@ class Issue:
 
 
 @dataclass(slots=True)
+class IssueAnalysis:
+    """Structured intermediate representation of an issue, built from the user's
+    natural-language description without inventing facts.
+
+    All fields default to empty / unknown so that partial extraction is safe.
+    Fields are populated by ``Agent.analyze_issue()`` using deterministic rules
+    in the baseline (no LLM required). An LLM provider may fill them more
+    richly when configured.
+    """
+
+    symptoms: list[str] = field(default_factory=list)
+    """Human-readable symptoms extracted from the description."""
+
+    affected_device: str = ""
+    """Device, application, or service mentioned (e.g. 'MacBook', 'Outlook')."""
+
+    expected_behavior: str = ""
+    """What the user expects to happen."""
+
+    actual_behavior: str = ""
+    """What is actually happening (the problem)."""
+
+    topics: set[str] = field(default_factory=set)
+    """Troubleshooting domains detected: bluetooth, wifi, dns, performance,
+    software-install, account-access, vpn, etc."""
+
+    os_hints: list[str] = field(default_factory=list)
+    """OS indicators extracted from text (may differ from the UI selector)."""
+
+    missing_info: list[str] = field(default_factory=list)
+    """Information that would materially change the diagnostic plan but is absent."""
+
+    clarification_question: str = ""
+    """A single focused question to ask the user if missing_info is non-empty.
+    Empty when no clarification is needed."""
+
+    diagnostic_confidence: str = "low"
+    """'high' when symptoms and OS are clear and the KB covers the topic;
+    'medium' when some information is inferred; 'low' when key details are absent."""
+
+    severity: str = "medium"
+    """'high' / 'medium' / 'low' — inferred from symptom keywords."""
+
+
+@dataclass(slots=True)
+class CaseState:
+    """Structured, persisted state for one support case."""
+
+    case_id: str = ""
+    status: str = "open"
+    issue: str = ""
+    os: str = "unknown"
+    symptoms: list[str] = field(default_factory=list)
+    topics: list[str] = field(default_factory=list)
+    environment: dict[str, Any] = field(default_factory=dict)
+    clarification_questions: list[str] = field(default_factory=list)
+    clarification_answers: list[str] = field(default_factory=list)
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+    hypotheses: list[dict[str, Any]] = field(default_factory=list)
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    reused_diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    actions_attempted: list[str] = field(default_factory=list)
+    approvals: list[dict[str, Any]] = field(default_factory=list)
+    verification: dict[str, Any] = field(default_factory=dict)
+    next_step: str = ""
+    confidence: str = "low"
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass(slots=True)
 class TriageResult:
     category: str
     category_probs: dict[str, float] | None = None

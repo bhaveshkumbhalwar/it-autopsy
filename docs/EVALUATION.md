@@ -85,24 +85,27 @@ rule indicator, not a probability.
 
 ## 2. Retrieval
 
-Corpus: 10 concise, derived summaries from **Apple Support** and **Microsoft
+Corpus: 11 concise, derived summaries from **Apple Support** and **Microsoft
 Learn** (`data/knowledge/kb.json`). Each entry stores publisher, URL, access
-date, OS scope and a short factual summary — not copied article text.
+date, OS scope and a short factual summary — not copied article text. Explicit
+Bluetooth, Wi-Fi/network, and DNS topics are scoped independently so shared
+words such as "wireless" or "connect" do not cross-cite unrelated guidance.
 
-Protocol: 14 hand-written queries in `data/eval/retrieval_eval.json`; 10
+Protocol: 15 hand-written queries in `data/eval/retrieval_eval.json`; 11
 answerable (expected document IDs) and 4 deliberately unanswerable. Metrics are
-computed with the production threshold (`cosine >= 0.18`) and OS filter.
+computed with the production threshold (`cosine >= 0.18`), OS filter, and
+explicit issue-topic filter.
 
 | Metric | Value |
 | --- | ---: |
-| Answerable queries | 10 |
+| Answerable queries | 11 |
 | Unanswerable queries | 4 |
 | Hit@1 | **1.0000** |
 | Hit@3 | **1.0000** |
 | MRR | **1.0000** |
 | False-positive rate on unanswerable queries | **0.0000** |
 
-Interpretation, without inflation: the KB has only 10 chunks and the queries
+Interpretation, without inflation: the KB has only 11 chunks and the queries
 were written after the KB existed, so **Hit@1 = 1.0 is a sanity check, not a
 benchmark**. It shows the retriever finds the intended chunk for clear
 phrasings. It does not show generalisation to unseen help-desk language. The
@@ -112,18 +115,19 @@ DNS page; the agent escalates instead of borrowing the Windows page.
 
 ## 3. Agent behaviour
 
-Seven scenarios in `data/eval/agent_scenarios.json`. Checks assert loop
-properties — tools called, escalation flag, stop reason, priority rule — not
-wording. Result: **7/7 passed**.
+Eight scenarios in `data/eval/agent_scenarios.json`. Checks assert loop
+properties — tools called, escalation flag, stop reason, priority rule, and
+relevant/forbidden evidence IDs — not wording. Result: **8/8 passed**.
 
 | Scenario | Observed behaviour |
 | --- | --- |
+| `mac-bluetooth-headphones` | Apple Bluetooth pairing/audio guidance; no Wi-Fi tools or device observations; explicit limitation |
 | `mac-wifi` | Wi-Fi → DNS → ping → VPN chain, no escalation |
 | `windows-dns` | Starts with DNS observation, then ping |
 | `security-ransomware` | No tools, `security_concern`, escalated, priority high |
 | `no-evidence-printer` | No tools, `insufficient_evidence`, escalated |
 | `broad-impact` | Priority high, escalated (no source) |
-| `outlook-gap` | Escalated, no guessed O365 fix |
+| `outlook-gap` | Cited Outlook guidance; no automated O365 diagnostic; not escalated |
 | `mac-dns-gap` | Escalated, no cross-OS citation |
 
 Observation sensitivity is additionally covered by unit tests with injected
@@ -162,7 +166,7 @@ trace; `max_steps=1` stops at one observation and escalates.
 
 ```text
 $ .venv/bin/python -m pytest -q
-78 passed
+85 passed
 ```
 
 Test files: environment, retrieval, security, classifier (rule, score

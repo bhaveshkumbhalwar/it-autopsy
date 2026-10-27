@@ -38,3 +38,7 @@ reports/*.png
 .DS_Store
 .idea/
 .vscode/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/

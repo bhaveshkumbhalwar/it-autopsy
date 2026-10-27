@@ -72,6 +72,17 @@ RETRIEVAL_MIN_SCORE = 0.18
 RETRIEVAL_TOP_K = 3
 
 # ---------------------------------------------------------------------------
+# LLM-assisted mode
+# ---------------------------------------------------------------------------
+# ``LLM_MODE`` controls whether an LLM is used for issue analysis.
+# "deterministic" (default) — no API key required; all decisions are rule-based.
+# "llm"                    — uses an OpenAI-compatible endpoint; requires LLM_API_KEY.
+# Provider config (env vars): LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT.
+# These must never be committed to source control.
+LLM_MODE_DETERMINISTIC = "deterministic"
+LLM_MODE_LLM = "llm"
+
+# ---------------------------------------------------------------------------
 # Agent loop bounds
 # ---------------------------------------------------------------------------
 MAX_STEPS = 6

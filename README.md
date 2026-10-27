@@ -45,16 +45,47 @@ above is still the documented way to rebuild it and write metadata/reports.
 The dataset download needs network access; after that, training, tests and
 evaluation are local and require no API key.
 
+## React frontend
+
+The redesigned React + Vite + Tailwind frontend lives in `frontend/`. It calls
+the Python agent through the Starlette API in `backend/api.py`.
+
+```bash
+# Terminal 1: backend API
+.venv/bin/uvicorn backend.api:app --reload --port 8000
+
+# Terminal 2: frontend
+cd frontend
+npm install
+npm run dev
+```
+
+Open the Vite URL, usually `http://localhost:5173`. The Vite dev server
+proxies `/api` to the backend.
+
+For a single-server deployment, build the frontend first:
+
+```bash
+cd frontend
+npm run build
+cd ..
+.venv/bin/uvicorn backend.api:app --host 0.0.0.0 --port 8000
+```
+
+The backend serves `frontend/dist` when it exists. The original Streamlit
+interface remains available with `.venv/bin/python -m streamlit run app.py`.
+
 ## What is real and what is simulated
 
 | Part | Status |
 | --- | --- |
 | Ticket classifier | Real model trained on a public CC BY 4.0 dataset: TF-IDF word+char features + `LinearSVC`, plus a deterministic EOL keyword rule. Hybrid held-out accuracy **0.8356**, macro-F1 **0.8017**; base model alone **0.7473 / 0.6449** |
-| Knowledge base | 10 concise derived summaries of **official** Apple Support and Microsoft Learn pages, with URLs and access dates |
-| Retrieval | Real TF-IDF cosine search with a hard relevance threshold and OS filter; no answer → escalate |
-| Diagnostics | **Default: simulated**, always labelled `SIMULATED`. Three real **read-only** macOS commands, off by default, requiring opt-in **and** per-call approval |
+| Knowledge base | 11 concise derived summaries of **official** Apple Support and Microsoft Learn pages, with URLs and access dates |
+| Retrieval | Real TF-IDF cosine search with a hard relevance threshold, OS filter, and explicit Bluetooth/network topic scoping; no answer → escalate |
+| Diagnostics | **Default: simulated**, always labelled `SIMULATED`. Real **read-only** macOS commands are off by default and require opt-in **and** per-call approval. System-resource diagnostics are available for performance issues; no Bluetooth diagnostic tool is available |
 | Priority | Transparent keyword rules, not a trained model (the dataset has no urgency labels) |
-| Agent loop | Real deterministic controller with a decision trace, observation-driven branching, loop prevention and a step budget |
+| Agent loop | Real deterministic controller with a decision trace, observation-driven branching, loop prevention and a step budget. Bluetooth issues get relevant manual guidance without invented device observations |
+| Streamlit UI | Modern sidebar workspace: Overview, AI Help Desk, Incident Cases, Diagnostics, Knowledge Base, Analytics and Settings |
 | Persistence | SQLite `cases` + `events`, parameterized SQL, redacted at the persistence boundary |
 | LLM | None in the default path |
 
@@ -64,11 +95,11 @@ evaluation are local and require no API key.
 | --- | --- |
 | Classification, hybrid (657 held-out test rows) | accuracy **0.8356**, macro-F1 **0.8017**, weighted-F1 0.8311; majority baseline 0.3364 |
 | Classification, base model only (EOL rule disabled) | accuracy **0.7473**, macro-F1 **0.6449**, weighted-F1 0.7115 |
-| Retrieval (10 answerable, 4 unanswerable queries) | Hit@1 1.0000, MRR 1.0000, false-positive rate 0.0000 |
-| Agent scenarios | **7/7** |
+| Retrieval (11 answerable, 4 unanswerable queries) | Hit@1 1.0000, MRR 1.0000, false-positive rate 0.0000 |
+| Agent scenarios | **8/8** |
 | Security checks | **16/16** |
 | Robustness cases | **12/12** |
-| Tests | **78 passed** |
+| Tests | **86 passed** |
 
 These are small, hand-written regression suites, not industry benchmarks. The
 strict leakage-reduced training view removes both unique EOL texts (they also
@@ -102,10 +133,10 @@ Details and residual risks: [`docs/SAFETY.md`](docs/SAFETY.md).
 ## Repository layout
 
 ```text
-app.py                     Streamlit UI (run, cases, evaluation, safety)
+app.py                     Streamlit UI (Overview, AI Help Desk, Incident Cases, Diagnostics, Knowledge Base, Analytics, Settings)
 src/agent.py               observation-driven bounded controller
 src/classifier.py          TF-IDF word+char LinearSVC, EOL rule, train/predict/evaluate
-src/retrieval.py           KB search, threshold, OS filter, citations
+src/retrieval.py           KB search, topic/OS filters, threshold, citations
 src/policy.py              allowlist, OS support, typed params, approval
 src/tools.py               simulated adapters, three real macOS read-only commands, redaction
 src/verification.py        outcome rules + escalation handoff
@@ -114,7 +145,7 @@ src/evaluation.py          five independent evaluation suites + reports
 data/knowledge/kb.json     tracked official-source summaries
 data/eval/*.json           tracked hand-written eval sets
 scripts/                   download, audit, train/evaluate
-tests/                     78 tests (unit, security, DB, classifier, UI AppTest)
+tests/                     86 tests (unit, security, DB, classifier, UI AppTest)
 docs/                      architecture, evaluation, safety, data card, sources, demo
 reports/                   generated metrics (git-ignored)
 models/, data/raw/, data/processed/   generated artefacts (git-ignored)
@@ -142,8 +173,9 @@ models/, data/raw/, data/processed/   generated artefacts (git-ignored)
 - The base classifier has no EOL training examples and scores are not
   calibrated. The EOL rule matches the class-name phrase; it is not a general
   end-of-life lifecycle detector.
-- Retrieval covers only Apple Wi-Fi and Windows DNS client guidance; many
-  categories correctly escalate for lack of evidence.
+- Retrieval covers Apple Bluetooth/Wi-Fi and Windows DNS client guidance;
+  Bluetooth diagnostics are unavailable, and many categories correctly
+  escalate for lack of evidence.
 - The agent's tools are simulated except three opt-in read-only macOS commands.
 - The retrieval and agent evaluation sets are small and hand-written.
 - The Streamlit app has no authentication; it is a local demo.

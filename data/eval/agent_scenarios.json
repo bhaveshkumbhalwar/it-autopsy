@@ -2,14 +2,46 @@
   "description": "Agent behaviour scenarios. Expectations are properties of the loop (which tools ran, whether it escalated, priority rules), not phrases copied from the output. Category is recorded but only asserted where the dataset label is unambiguous.",
   "scenarios": [
     {
+      "id": "mac-bluetooth-headphones",
+      "text": "My MacBook's Bluetooth is turned on, but my wireless headphones are not connecting. How can I fix this?",
+      "os": "macos",
+      "expect_priority": "medium",
+      "expect_escalated": false,
+      "expect_stopped_reason": "bluetooth_diagnostic_unavailable",
+      "expect_results": 0,
+      "must_not_call_tools": [
+        "sim_get_wifi_status",
+        "sim_get_dns_config",
+        "sim_ping_host",
+        "sim_check_vpn"
+      ],
+      "must_return_evidence": [
+        "apple-bluetooth-mac-headphones"
+      ],
+      "must_not_return_evidence": [
+        "apple-wifi-101588-diagnostics"
+      ]
+    },
+    {
       "id": "mac-wifi",
       "text": "My Mac connects to Wi-Fi but has no internet access",
       "os": "macos",
       "expect_priority": "medium",
       "expect_escalated": false,
       "expect_stopped_reason": "observations_complete",
-      "must_call_tools": ["sim_get_wifi_status", "sim_get_dns_config"],
-      "must_not_call_tools": ["macos_wifi_status"],
+      "must_call_tools": [
+        "sim_get_wifi_status",
+        "sim_get_dns_config"
+      ],
+      "must_not_call_tools": [
+        "macos_wifi_status"
+      ],
+      "must_return_evidence": [
+        "apple-wifi-101588-check-connection"
+      ],
+      "must_not_return_evidence": [
+        "apple-bluetooth-mac-headphones"
+      ],
       "expect_min_evidence": 1
     },
     {
@@ -19,8 +51,13 @@
       "expect_priority": "medium",
       "expect_escalated": false,
       "expect_first_tool": "sim_get_dns_config",
-      "must_call_tools": ["sim_get_dns_config", "sim_ping_host"],
-      "must_not_call_tools": ["macos_dns_config"],
+      "must_call_tools": [
+        "sim_get_dns_config",
+        "sim_ping_host"
+      ],
+      "must_not_call_tools": [
+        "macos_dns_config"
+      ],
       "expect_min_evidence": 1
     },
     {
@@ -52,8 +89,8 @@
       "id": "outlook-gap",
       "text": "Outlook mailbox cannot send email",
       "os": "windows",
-      "expect_escalated": true,
-      "expect_stopped_reason": "insufficient_evidence"
+      "expect_escalated": false,
+      "expect_stopped_reason": "no_automated_diagnostic"
     },
     {
       "id": "mac-dns-gap",

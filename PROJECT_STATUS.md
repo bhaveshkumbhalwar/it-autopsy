@@ -1,7 +1,7 @@
 # Project Status — Autonomous IT Help Desk Agent
 
 Last updated: 2026-10-23  
-Overall status: **Phases 0–12 complete, final F1/audit pass complete. No commit has been made.**
+Overall status: **Phases 0–12 complete; Bluetooth routing and UI follow-up fixes verified. No commit has been made.**
 
 ## Objective
 
@@ -192,7 +192,7 @@ Separate suites (no tuning on the classification test split):
 | --- | --- | --- |
 | Classification | `.venv/bin/python -m scripts.evaluate_classifier` | hybrid acc 0.8356, macro-F1 0.8017; base model 0.7473 / 0.6449 |
 | Retrieval | `.venv/bin/python -m src.evaluation` | Hit@1 1.0000, MRR 1.0000, FP 0.0000 |
-| Agent | same | 7/7 scenarios |
+| Agent | same | 8/8 scenarios |
 | Security | same | 16/16 checks |
 | Robustness | same | 12/12 cases |
 | Tests | `.venv/bin/python -m pytest -q` | 78 passed |
@@ -233,12 +233,42 @@ bootstrap (git-ignored model absent, auto-trained on first use).
   → EOL rule on train: precision 0.9783, recall 1.0, matches 46
 .venv-acceptance/bin/python -m src.evaluation
   → classification acc=0.8356, retrieval hit@1=1.0000,
-    agent 7/7, security 16/16, robustness 12/12
+    agent 8/8, security 16/16, robustness 12/12
 ```
 
 The clean environment produced the same metrics as the development environment.
 The acceptance environment was then removed; `.venv` remains for normal use.
 Both environments are git-ignored.
+
+## Conversation and case-continuity follow-up
+
+Added lightweight multi-turn case support on top of the existing deterministic
+pipeline:
+
+- `Agent.run(..., case_id=...)` can continue an existing case instead of
+  creating a new one.
+- The UI saves analysis, redacted conversation history, and a workflow status
+  (`open`, `investigating`, `awaiting_user`, `resolved`, `escalated`) for each
+  case.
+- Cases can be reopened from the Cases tab and continued in New case.
+- Analysis clarification questions and verification follow-up questions are shown
+  prominently; case status is derived from verification outcome, not tool success.
+
+Commands and results:
+
+```text
+.venv/bin/python -m pytest -q
+  -> 86 passed in 10.17s
+.venv/bin/python -m src.evaluation
+  -> classification acc=0.8356, retrieval hit@1=1.0000,
+     agent 8/8, security 16/16, robustness 12/12
+.venv/bin/python -m streamlit run app.py --server.headless true --server.port 8599
+  -> curl / = 200, curl /_stcore/health = ok
+```
+
+Limitations: conversation context is appended as text rather than a structured
+dialogue planner; follow-up runs may rerun relevant diagnostics; no LLM is used
+by default; case continuity is local SQLite only.
 
 ## Final audit — F1 and integrity fixes
 
@@ -254,7 +284,7 @@ Commands run after the changes:
   → 78 passed in 8.75s
 .venv/bin/python -m src.evaluation
   → classification acc=0.8356, retrieval hit@1=1.0000,
-    agent 7/7, security 16/16, robustness 12/12
+    agent 8/8, security 16/16, robustness 12/12
 .venv/bin/python -m streamlit run app.py --server.headless true --server.port 8599
   → curl / = 200, curl /_stcore/health = ok
 ```
@@ -311,12 +341,35 @@ evidence. The base-model macro-F1 (0.6449) is the honest statistical result.
   removal; EOL is handled by a deterministic phrase rule. That rule's test F1
   is optimistic because it was added after the failure was observed.
 - Classifier scores are not calibrated.
-- Knowledge base covers only Apple Wi-Fi and Windows DNS client guidance.
+- Knowledge base covers Apple Bluetooth/Wi-Fi and Windows DNS client guidance.
+- There is no Bluetooth diagnostic tool; Bluetooth cases show cited manual
+  guidance and explicitly state that no device state was observed.
 - Only three real commands exist, all macOS and read-only; everything else is
   simulated and labelled.
 - Retrieval/agent evaluation sets are small and hand-written.
 - Streamlit UI has no authentication; it is a local demo.
 - No per-language performance claim is made.
+
+## Follow-up behavior and UI improvements — 2026-10-23
+
+- Root cause fixed: the planner treated the substring "connect" as network
+  intent, and TF-IDF matched shared "wireless" wording to Apple Wi-Fi
+  diagnostics. Topic scoping now keeps Bluetooth and network evidence distinct;
+  Wi-Fi tools require explicit network symptoms.
+- Added Apple Mac Bluetooth pairing/audio-output guidance. Bluetooth-only cases
+  run no tools, report that Bluetooth diagnostics are unavailable, and ask the
+  user to verify manually. No Bluetooth state or fix is fabricated.
+- Replaced raw escalation JSON with a readable, redacted handoff, action/result
+  table, plain-English stopping reason, source links, next steps, and follow-up
+  question. Routine results prioritize issue summary, evidence, actions,
+  guidance, and verification.
+- Primary navigation is **New case**, **Cases**, and **Admin / Diagnostics**;
+  Evaluation and Safety remain available within Admin / Diagnostics.
+- Final verification: `.venv/bin/python -m pytest -q` → **86 passed**;
+  `.venv/bin/python -m src.evaluation` → retrieval **Hit@1 1.0000**, agent
+  **8/8**, security **16/16**, robustness **12/12**. Bluetooth and Wi-Fi repros
+  were run independently; the mixed Bluetooth + Wi-Fi case also runs only the
+  network diagnostics relevant to its explicit Wi-Fi symptoms.
 
 ## Suggested commit message
 
@@ -324,10 +377,10 @@ evidence. The base-model macro-F1 (0.6449) is the honest statistical result.
 feat: implement deterministic autonomous IT help desk agent
 
 - add leakage-reduced TF-IDF word+char LinearSVC classifier with training-validated EOL rule (hybrid acc 0.8356, macro-F1 0.8017; base model 0.7473/0.6449)
-- add cited retrieval over 10 official Apple/Microsoft summaries with OS filtering
+- add cited retrieval over 11 official Apple/Microsoft summaries with OS and topic filtering
 - add observation-driven bounded agent loop with decision trace and escalation guards
 - enforce closed tool allowlist, typed params, opt-in and approval at the tool boundary
 - redact identifiers in tool output, case text and SQLite event logs; parameterize all SQL
-- add Streamlit UI, five evaluation suites and 78 tests
+- add Streamlit UI, five evaluation suites and 86 tests
 - document architecture, evaluation, safety, demo, data card and limitations
 ```

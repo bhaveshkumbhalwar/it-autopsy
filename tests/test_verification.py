@@ -43,7 +43,8 @@ def test_run_escalation_flag_is_respected():
     run = {"escalated": True, "stopped_reason": "security_concern", "results": []}
     res = verification.Verifier().verify(EV, [], run=run)
     assert res["outcome"] == config.OUTCOME_ESCALATED
-    assert "security_concern" in res["reason"]
+    assert "security concern" in res["reason"].lower()
+    assert "security_concern" not in res["reason"]
 
 
 def test_user_confirmation_sets_verified_resolved():
@@ -90,3 +91,32 @@ def test_escalation_handoff_has_required_fields():
     ):
         assert key in esc
     assert esc["sources"] and esc["to"] == "human support"
+    assert "observation_complete" not in esc["not_attempted_reason"]
+
+
+def test_bluetooth_without_diagnostics_is_not_reported_as_resolved():
+    run = {
+        "issue": "Bluetooth headphones will not connect",
+        "triage": {"category": "Support general", "priority": "medium"},
+        "evidence": [{"doc_id": "apple-bluetooth-mac-headphones"}],
+        "results": [],
+    }
+    result = verification.Verifier().verify(
+        run["evidence"], run["results"], run=run
+    )
+    assert result["outcome"] == config.OUTCOME_UNABLE
+    assert "No Bluetooth diagnostic tool is available" in result["reason"]
+    assert "headphone" in result["follow_up_question"]
+
+
+def test_escalation_handles_missing_and_null_structured_fields():
+    handoff = verification.Escalator().build(
+        {"triage": None, "evidence": None, "results": [None], "issue": None},
+        {},
+    )
+    assert handoff["category"] == "unknown"
+    assert handoff["priority"] == "unknown"
+    assert handoff["symptoms"] == ""
+    assert handoff["sources"] == []
+    assert handoff["actions_attempted"] == []
+    assert "None" not in handoff["not_attempted_reason"]

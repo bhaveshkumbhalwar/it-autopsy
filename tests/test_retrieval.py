@@ -28,6 +28,25 @@ def test_macos_wifi_query_returns_apple_evidence():
     assert any(e.source == "apple" and e.os_scope == "macos" for e in ev)
 
 
+def test_bluetooth_headphone_query_returns_bluetooth_guidance_only():
+    ev = retrieval.Retriever().search(
+        "My MacBook Bluetooth is on but wireless headphones are not connecting",
+        os_name="macos",
+    )
+    assert ev
+    assert [e.doc_id for e in ev] == ["apple-bluetooth-mac-headphones"]
+    assert all("wifi" not in e.title.lower() for e in ev)
+    assert "Sound > Output" in ev[0].snippet
+
+
+def test_wifi_query_does_not_return_bluetooth_evidence():
+    ev = retrieval.Retriever().search(
+        "Mac Wi-Fi connected but no internet", os_name="macos"
+    )
+    assert ev
+    assert all(e.doc_id != "apple-bluetooth-mac-headphones" for e in ev)
+
+
 def test_windows_dns_query_returns_microsoft_evidence():
     ev = retrieval.Retriever().search(
         "Windows DNS client cannot resolve internal names", os_name="windows"

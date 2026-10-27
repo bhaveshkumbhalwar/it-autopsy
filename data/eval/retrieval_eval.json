@@ -2,6 +2,7 @@
   "description": "Hand-written retrieval queries written against the curated knowledge base. Expected document IDs come from the KB itself, not from model output. Queries marked answerable=false should return no evidence (the KB cannot answer them).",
   "min_score": 0.18,
   "queries": [
+    {"id": "mac-bluetooth-headphones", "query": "Mac Bluetooth headphones won't connect", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-bluetooth-mac-headphones"]},
     {"id": "wifi-no-internet", "query": "Mac Wi-Fi connected but no internet", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-check-connection"]},
     {"id": "dhcp-lease", "query": "renew DHCP lease on Mac", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-restart"]},
     {"id": "date-time", "query": "Mac date and time wrong network", "os": "macos", "answerable": true, "expected_doc_ids": ["apple-wifi-101588-datetime"]},

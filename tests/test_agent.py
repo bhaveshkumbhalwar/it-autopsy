@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src import agent, config, tools
+from src import agent, config, tools, verification
 
 
 def _run(text, os_name="macos", registry=None, **kwargs):
@@ -23,6 +23,49 @@ def test_observation_chain_uses_result_to_choose_next_step():
     assert any("next check DNS" in d for d in decisions)
     assert run["stopped_reason"] == "observations_complete"
     assert run["escalated"] is False
+
+
+def test_bluetooth_headphones_use_bluetooth_evidence_without_wifi_tools():
+    run = _run(
+        "My MacBook's Bluetooth is turned on, but my wireless headphones are not "
+        "connecting. How can I fix this?"
+    )
+
+    assert run["results"] == []
+    assert [e["doc_id"] for e in run["evidence"]] == [
+        "apple-bluetooth-mac-headphones"
+    ]
+    assert run["evidence"][0]["url"] == (
+        "https://support.apple.com/guide/mac-help/"
+        "connect-a-wireless-accessory-blth1004/mac"
+    )
+    assert run["stopped_reason"] == "bluetooth_diagnostic_unavailable"
+    assert run["escalated"] is False
+    assert "No Bluetooth diagnostic tool is available" in run["plan"]["rationale"]
+
+    ver = verification.Verifier().verify(
+        run["evidence"], run["results"], run=run
+    )
+    assert ver["outcome"] == config.OUTCOME_UNABLE
+    assert "No Bluetooth diagnostic tool is available" in ver["reason"]
+    assert "headphone" in ver["follow_up_question"]
+
+
+def test_bluetooth_and_reported_wifi_issue_runs_only_relevant_network_tools():
+    run = _run(
+        "My Bluetooth headphones will not connect, and my Mac also has no Wi-Fi "
+        "internet access."
+    )
+    called = [r["tool_name"] for r in run["results"]]
+    assert called == [
+        "sim_get_wifi_status",
+        "sim_get_dns_config",
+        "sim_ping_host",
+        "sim_check_vpn",
+    ]
+    evidence_ids = [e["doc_id"] for e in run["evidence"]]
+    assert "apple-bluetooth-mac-headphones" in evidence_ids
+    assert "apple-wifi-101588-check-connection" in evidence_ids
 
 
 def test_bounded_loop_max_steps():
@@ -137,3 +180,23 @@ def test_oversized_issue_rejected():
 
     with pytest.raises(ValueError):
         _run("x" * 4001)
+
+
+def test_missing_os_asks_before_network_diagnostics():
+    run = _run("The network is down and websites will not load", os_name="unknown")
+    assert run["results"] == []
+    assert run["needs_clarification"] is True
+    assert "operating system" in run["clarification_question"].lower()
+    assert run["stopped_reason"] == "needs_clarification"
+
+
+def test_case_continuity_preserves_case_id():
+    a = agent.Agent(os_name="macos")
+    first = a.run("My Mac connects to Wi-Fi but has no internet")
+    second = a.run(
+        "My Mac connects to Wi-Fi but has no internet",
+        os_name="macos",
+        case_id=first["case_id"],
+    )
+    assert second["case_id"] == first["case_id"]
+    assert second["results"]

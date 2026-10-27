@@ -1,5 +1,40 @@
 [
   {
+    "id": "apple-bluetooth-mac-headphones",
+    "title": "Connect a Bluetooth device with your Mac",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/guide/mac-help/connect-a-wireless-accessory-blth1004/mac",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "bluetooth-connectivity",
+    "text": "Turn headphones on and make them discoverable. On Mac, open Apple menu > System Settings > Bluetooth, choose Connect, and accept any prompt. If connected but silent, open System Settings > Sound > Output and select them.",
+    "tags": [
+      "bluetooth",
+      "headphones",
+      "pairing",
+      "audio"
+    ]
+  },
+  {
+    "id": "apple-bluetooth-forget-repair",
+    "title": "Forget and re-pair a Bluetooth device",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/guide/mac-help/if-a-bluetooth-device-doesnt-work-blth1041/mac",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "bluetooth-connectivity",
+    "text": "Forget and re-pair a Bluetooth device. Go to System Settings > Bluetooth, click the Info button next to the device, then click Forget Device. Put the accessory back into pairing mode and add it again. Also verify that the accessory is charged and powered on.",
+    "tags": [
+      "bluetooth",
+      "forget",
+      "re-pair",
+      "headphones",
+      "connectivity"
+    ]
+  },
+  {
     "id": "apple-wifi-101588-check-connection",
     "title": "Check Wi-Fi connection first",
     "source": "apple",
@@ -9,7 +44,11 @@
     "access_date": "2026-10-23",
     "topic": "wifi-connectivity",
     "text": "Ensure the Mac is connected to a Wi-Fi network and that the network allows internet access. If connection to the network is difficult, follow Apple's general Wi-Fi connection guidance before troubleshooting internet reachability.",
-    "tags": ["wifi", "connection", "network"]
+    "tags": [
+      "wifi",
+      "connection",
+      "network"
+    ]
   },
   {
     "id": "apple-wifi-101588-restart",
@@ -21,7 +60,11 @@
     "access_date": "2026-10-23",
     "topic": "wifi-connectivity",
     "text": "Restarting the Mac can renew the IP address assigned by the network (DHCP lease). If the lease expired or the address is in use, the Mac may get a new address. A manual DHCP lease renewal is also possible.",
-    "tags": ["wifi", "dhcp", "restart"]
+    "tags": [
+      "wifi",
+      "dhcp",
+      "restart"
+    ]
   },
   {
     "id": "apple-wifi-101588-datetime",
@@ -33,7 +76,11 @@
     "access_date": "2026-10-23",
     "topic": "wifi-connectivity",
     "text": "Make sure the date and time are set correctly on the Mac. Incorrect time can interfere with some network services and security checks.",
-    "tags": ["wifi", "time", "date"]
+    "tags": [
+      "wifi",
+      "time",
+      "date"
+    ]
   },
   {
     "id": "apple-wifi-101588-vpn",
@@ -45,7 +92,11 @@
     "access_date": "2026-10-23",
     "topic": "wifi-connectivity",
     "text": "VPN or other software that monitors or interacts with network connections can block internet access. Check whether such software is affecting connectivity.",
-    "tags": ["wifi", "vpn", "security"]
+    "tags": [
+      "wifi",
+      "vpn",
+      "security"
+    ]
   },
   {
     "id": "apple-wifi-101588-router",
@@ -57,7 +108,11 @@
     "access_date": "2026-10-23",
     "topic": "wifi-connectivity",
     "text": "If you manage the router, install the latest firmware updates. Restarting the router and using Apple's recommended router settings can help. If issues persist across networks, contact the internet service provider or network administrator.",
-    "tags": ["wifi", "router", "firmware"]
+    "tags": [
+      "wifi",
+      "router",
+      "firmware"
+    ]
   },
   {
     "id": "apple-wifi-101588-diagnostics",
@@ -69,7 +124,46 @@
     "access_date": "2026-10-23",
     "topic": "wifi-connectivity",
     "text": "Look for Wi-Fi Recommendations in Control Centre or the menu bar. Option-click the Wi-Fi icon and choose Open Wireless Diagnostics to analyze the wireless environment. These features may not be available for personal hotspots or certain enterprise security protocols such as WPA/WPA2 Enterprise.",
-    "tags": ["wifi", "diagnostics", "wireless"]
+    "tags": [
+      "wifi",
+      "diagnostics",
+      "wireless"
+    ]
+  },
+  {
+    "id": "apple-slow-mac-activity",
+    "title": "Use Activity Monitor to identify slow Mac processes",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/guide/activity-monitor/welcome/mac",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "performance",
+    "text": "If your Mac is running very slowly, freezing, or unresponsive, check Activity Monitor for high CPU, memory, or disk usage. Quit heavy processes, free storage, and reduce login items. Hardware issues may require service.",
+    "tags": [
+      "performance",
+      "slow",
+      "cpu",
+      "memory",
+      "activity monitor"
+    ]
+  },
+  {
+    "id": "apple-slow-mac-startup",
+    "title": "Speed up a slow Mac at startup",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/guide/mac-help/change-login-items-mchlp1066/mac",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "performance",
+    "text": "If your Mac is slow to start up or freezing during login, review login items and background apps. Keep macOS updated and ensure enough free storage. Hardware issues may require service.",
+    "tags": [
+      "performance",
+      "slow",
+      "startup",
+      "login items"
+    ]
   },
   {
     "id": "ms-dns-client-ipconfig",
@@ -81,7 +175,11 @@
     "access_date": "2026-10-23",
     "topic": "dns-client",
     "text": "On a Windows client, run ipconfig /all as administrator to verify IP address, subnet mask, default gateway, DNS servers and DNS suffix. If configuration is invalid, renew with ipconfig /renew (DHCP) or correct static settings.",
-    "tags": ["dns", "ipconfig", "windows"]
+    "tags": [
+      "dns",
+      "ipconfig",
+      "windows"
+    ]
   },
   {
     "id": "ms-dns-client-ping-dns",
@@ -93,7 +191,11 @@
     "access_date": "2026-10-23",
     "topic": "dns-client",
     "text": "Ping the preferred DNS server by IP address to test network reachability. If it does not respond, the issue is more likely network connectivity between client and DNS servers. ICMP traffic must be allowed through the firewall for ping to work.",
-    "tags": ["dns", "ping", "connectivity"]
+    "tags": [
+      "dns",
+      "ping",
+      "connectivity"
+    ]
   },
   {
     "id": "ms-dns-client-nslookup",
@@ -105,7 +207,11 @@
     "access_date": "2026-10-23",
     "topic": "dns-client",
     "text": "Use nslookup to test name resolution without the client's DNS cache. Test short name, FQDN (with trailing period), the DNS server itself, a failing internal record and an external name such as bing.com. Ensure the DNS suffix is configured correctly if short names fail but FQDNs resolve.",
-    "tags": ["dns", "nslookup", "resolution"]
+    "tags": [
+      "dns",
+      "nslookup",
+      "resolution"
+    ]
   },
   {
     "id": "ms-dns-client-cache",
@@ -117,6 +223,118 @@
     "access_date": "2026-10-23",
     "topic": "dns-client",
     "text": "Run ipconfig /displaydns to inspect cached entries. If a cached negative response is shown for the failing name, clear the cache with ipconfig /flushdns and retest. Note: flushdns changes state and should be treated as guidance, not an automatic action.",
-    "tags": ["dns", "cache", "ipconfig"]
+    "tags": [
+      "dns",
+      "cache",
+      "ipconfig"
+    ]
+  },
+  {
+    "id": "ms-account-locked-ad",
+    "title": "Troubleshoot Active Directory account lockout",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/account-lockouts-troubleshooting",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "account-access",
+    "text": "An Active Directory account is locked out when the number of failed sign-in attempts exceeds the account lockout threshold set by policy. An administrator can unlock the account in Active Directory Users and Computers or via the Unlock-ADAccount PowerShell cmdlet. Identify the source of bad passwords using Security event log Event ID 4740 before unlocking.",
+    "tags": [
+      "account",
+      "lockout",
+      "active directory",
+      "password",
+      "windows"
+    ]
+  },
+  {
+    "id": "ms-software-install-pkg",
+    "title": "Troubleshoot software installation on Windows",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/group-policy/use-group-policy-to-install-software",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "software-install",
+    "text": "On Windows, software installation may fail if the user lacks administrator privileges, if the installer is blocked by Group Policy, or if the Windows Installer service is stopped. Check with IT whether the application is approved and available via the software deployment portal. If allowed, right-click the installer and choose 'Run as administrator'. Check Event Viewer > Application for MSI error codes.",
+    "tags": [
+      "software",
+      "install",
+      "windows",
+      "msi",
+      "group policy"
+    ]
+  },
+  {
+    "id": "apple-software-install-mac",
+    "title": "Install apps on your Mac",
+    "source": "apple",
+    "publisher": "Apple Inc.",
+    "url": "https://support.apple.com/guide/mac-help/install-and-uninstall-apps-from-the-internet-or-disc-mh35835/mac",
+    "os_scope": "macos",
+    "access_date": "2026-10-23",
+    "topic": "software-install",
+    "text": "Apps from the Mac App Store install automatically. For apps downloaded from the internet, macOS Gatekeeper checks the app against Apple's list of known malware. If an app is blocked, go to System Settings > Privacy & Security and review the security notice. Managed Macs may restrict app installation to IT-approved sources; contact your IT administrator if installation is blocked.",
+    "tags": [
+      "software",
+      "install",
+      "macos",
+      "gatekeeper",
+      "app store"
+    ]
+  },
+  {
+    "id": "ms-vpn-client-windows",
+    "title": "Troubleshoot VPN connections on Windows",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://learn.microsoft.com/en-us/windows-server/remote/remote-access/vpn/always-on-vpn/deploy/vpn-deploy-client-vpn-connections",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "vpn",
+    "text": "On Windows, if a VPN connection fails, check that the VPN profile is correctly configured in Settings > Network & Internet > VPN. Verify credentials and that the VPN server address is reachable. If using Always On VPN, check the event log under Applications and Services Logs > Microsoft > Windows > VpnClient for error details. Split tunnelling settings may affect which traffic routes through the VPN.",
+    "tags": [
+      "vpn",
+      "windows",
+      "network",
+      "remote access"
+    ]
+  },
+  {
+    "id": "ms-slow-windows-performance",
+    "title": "Improve Windows performance",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://support.microsoft.com/en-us/windows/tips-to-improve-pc-performance-in-windows-b3b3ef5b-5953-fb6a-2528-4bbed82fba96",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "performance",
+    "text": "To improve Windows performance: open Task Manager (Ctrl+Shift+Esc) and check which processes use high CPU or memory. Disable startup programs in Task Manager > Startup tab. Run Windows Update to get the latest patches. Check disk space: if the system drive has less than 10% free, performance degrades. Adjust power settings to High Performance if applicable.",
+    "tags": [
+      "performance",
+      "slow",
+      "windows",
+      "task manager",
+      "startup"
+    ]
+  },
+  {
+    "id": "ms-outlook-send-receive",
+    "title": "Fix Outlook send and receive errors",
+    "source": "microsoft",
+    "publisher": "Microsoft Learn",
+    "url": "https://support.microsoft.com/en-us/office/fix-problems-sending-and-receiving-email-in-microsoft-365-b0e4f60d-da54-4e3e-83ae-e5ad0db98d52",
+    "os_scope": "windows",
+    "access_date": "2026-10-23",
+    "topic": "email",
+    "text": "If Outlook cannot send or receive email, check network connectivity first. Then verify your account settings (File > Account Settings). Run the Microsoft Support and Recovery Assistant (SARA) to diagnose Outlook and Exchange issues automatically. If the mailbox shows Disconnected in the status bar, your account credentials may need to be re-entered or the Exchange server may be temporarily unavailable.",
+    "tags": [
+      "outlook",
+      "email",
+      "send",
+      "receive",
+      "office 365",
+      "exchange"
+    ]
   }
 ]

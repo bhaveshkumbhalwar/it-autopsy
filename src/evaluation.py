@@ -203,6 +203,13 @@ def evaluate_agent() -> dict:
         for tool in sc.get("must_not_call_tools", []):
             if tool in called:
                 failures.append(f"forbidden tool {tool}")
+        evidence_ids = [e["doc_id"] for e in run["evidence"]]
+        for doc_id in sc.get("must_return_evidence", []):
+            if doc_id not in evidence_ids:
+                failures.append(f"missing evidence {doc_id}")
+        for doc_id in sc.get("must_not_return_evidence", []):
+            if doc_id in evidence_ids:
+                failures.append(f"forbidden evidence {doc_id}")
         if "expect_first_tool" in sc and (not called or called[0] != sc["expect_first_tool"]):
             failures.append(f"first tool {called[:1]} != {sc['expect_first_tool']}")
         if "expect_results" in sc and len(run["results"]) != sc["expect_results"]:

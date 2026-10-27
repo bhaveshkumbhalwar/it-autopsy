@@ -148,6 +148,13 @@ class ToolRegistry:
                 "summary": "SIMULATED: No active VPN detected.",
                 "vpn_active": False,
             }
+        if name == "sim_get_system_resources":
+            return {
+                "summary": "SIMULATED: CPU 42%, memory 61%, disk 55% used.",
+                "cpu_percent": 42,
+                "memory_percent": 61,
+                "disk_percent": 55,
+            }
         if name == "sim_renew_dhcp_lease":
             return {
                 "summary": "SIMULATED: DHCP lease renewal would run here after approval. No real change was made.",
@@ -161,6 +168,7 @@ class ToolRegistry:
             "macos_wifi_status": ["system_profiler", "SPAirPortDataType"],
             "macos_dns_config": ["scutil", "--dns"],
             "macos_network_info": ["networksetup", "-getinfo", "Wi-Fi"],
+            "macos_system_resources": ["vm_stat"],
         }
         argv = commands.get(name)
         if argv is None:

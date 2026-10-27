@@ -28,6 +28,11 @@ The decision points that matter are in `src/agent.py`:
 
 - **No evidence → stop.** If retrieval returns nothing above
   `RETRIEVAL_MIN_SCORE`, the agent escalates instead of inventing a fix.
+- **Topic-specific evidence and tools.** Explicit Bluetooth and network terms
+  scope retrieval to their matching knowledge-base topics. Generic wording such
+  as "not connecting" does not start Wi-Fi diagnostics. When Bluetooth guidance
+  is available but no Bluetooth tool exists, the agent offers cited manual
+  steps, records that no device state was observed, and asks the user to verify.
 - **Security concern → stop before any tool.** Keywords such as `ransomware`,
   `breach`, `phishing` force priority `high`, `stopped_reason=security_concern`
   and escalation. No diagnostics run.
@@ -46,14 +51,14 @@ The decision points that matter are in `src/agent.py`:
 | `src/config.py` | Paths, categories, OS constants, thresholds, step budget, DB path override (`HDA_DB_PATH`) |
 | `src/schemas.py` | Stdlib dataclasses for Issue, TriageResult, Evidence, Plan, Step, ToolResult, Verification, Escalation, Case |
 | `src/classifier.py` | Word+character TF-IDF + `LinearSVC` trained on the leakage-reduced split; deterministic EOL phrase rule runs first; `predict` returns label, name, and uncalibrated scores |
-| `src/retrieval.py` | TF-IDF cosine search over `data/knowledge/kb.json`; threshold + optional OS filter; returns `Evidence` with citations |
+| `src/retrieval.py` | TF-IDF cosine search over `data/knowledge/kb.json`; explicit topic scoping, threshold + optional OS filter; returns `Evidence` with citations |
 | `src/policy.py` | Closed tool allowlist, OS support, typed parameter validation, opt-in, approval gate |
 | `src/tools.py` | Registry, simulated adapters, three hard-coded read-only macOS commands, redaction, structured errors |
 | `src/agent.py` | Intake, triage, retrieval, plan, bounded observation loop, trace, escalation flags |
 | `src/verification.py` | Outcome rules (`needs_user_confirmation`, `escalated`, `unable_to_verify`, `verified_resolved`, `not_resolved`) and handoff builder |
 | `src/database.py` | SQLite `cases` + `events`, parameterized SQL, redaction at the persistence boundary |
 | `src/evaluation.py` | Five independent suites + aggregate/per-suite reports |
-| `app.py` | Streamlit UI: run a case, browse stored cases, view metrics, inspect the allowlist |
+| `app.py` | Streamlit UI: run a case, browse stored cases, view readable evidence/actions/verification, and access admin evaluation/safety views |
 
 ## Priority rules (transparent, not trained)
 
@@ -110,10 +115,12 @@ ticket text ──► classifier ──► category + uncalibrated scores
 
 ## Known architectural limits
 
-- Tool adapters are simulated except three macOS read-only commands. The agent
-  therefore demonstrates the loop and safety boundary, not real remediation.
-- The knowledge base covers Apple Wi-Fi and Windows DNS client troubleshooting
-  only. Many ticket categories have no source and correctly escalate.
+- Tool adapters are simulated except three macOS read-only commands. There is
+  no Bluetooth diagnostic tool, so Bluetooth cases receive source-backed manual
+  guidance without simulated Bluetooth observations.
+- The knowledge base covers Apple Bluetooth and Wi-Fi guidance plus Windows DNS
+  client troubleshooting. Many ticket categories have no source and correctly
+  escalate.
 - Classification is a linear baseline. The strict leakage-reduced training set
   has no EOL rows, so EOL is handled by a deterministic phrase rule rather than
   the statistical model; see `docs/EVALUATION.md` for the caveat.
