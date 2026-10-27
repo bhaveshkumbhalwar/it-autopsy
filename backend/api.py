@@ -180,15 +180,12 @@ async def continue_case(request: Request) -> Response:
     os_name = payload.get("os") or payload.get("os_name") or existing.get("os") or "unknown"
     allow_real = bool(payload.get("allow_real", False))
     approved = bool(payload.get("approved", False))
-    case_state = existing.get("state")
     run, ver, esc = _run_case(
         combined,
         os_name,
         allow_real,
         approved,
         case_id=case_id,
-        case_state=case_state,
-        force_refresh=bool(payload.get("force_refresh", False)),
     )
     return _json({"case": _case_dict(run["case_id"]), "run": run, "verification": ver, "escalation": esc})
 

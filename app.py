@@ -1,14 +1,9 @@
 """Streamlit UI for the IT Autopsy Autonomous IT Help Desk Agent.
 
-<<<<<<< HEAD
-The UI is a thin shell over the same deterministic pipeline used by the tests
-and evaluation. All rendering goes through Streamlit's escaping (no
-``unsafe_allow_html``), and user/ticket text is never interpreted as markup or
-instructions.....
-=======
 The UI is a thin shell over the deterministic agent pipeline. It uses the
-existing backend, case store, retrieval system and evaluation reports.
->>>>>>> d4d3633 (updated ui)
+existing backend, case store, retrieval system and evaluation reports. All
+rendering escapes user and retrieved text; it is not interpreted as markup or
+instructions.
 """
 
 from __future__ import annotations
@@ -199,21 +194,11 @@ def _render_run(run: dict) -> None:
         explanation += f" Priority: {rationale}."
     st.caption(explanation)
 
-<<<<<<< HEAD
-    st.markdown("#### Evidence (official sources only)")
-    if run["evidence"]:
-        for e in run["evidence"]:
-            st.markdown(
-                f"- **{E['title']}** — {e['source']} — score {e['score']:.3f}  \n"
-                f"  <{e['url']}>  \n  {e['citation']}",
-                unsafe_allow_html=False,
-            )
-=======
     st.markdown("#### Relevant evidence")
     evidence = run.get("evidence") or []
     if not evidence:
         st.info("No sufficiently relevant official source was found.")
->>>>>>> d4d3633 (updated ui)
+
     else:
         for item in evidence:
             if not isinstance(item, dict):
