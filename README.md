@@ -9,6 +9,7 @@ then asks for confirmation or escalates.
 No API key is required. The same pipeline powers the tests, the evaluation
 harness and the Streamlit UI.
 
+
 ```text
 intake → triage → retrieve → plan → policy check → execute → observe
       → next step → verify or escalate
