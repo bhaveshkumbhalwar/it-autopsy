@@ -1,4 +1,4 @@
-# Autonomous IT Help Desk Agent
+# Autonomous IT Help Desk Agent..
 
 A local, deterministic **tool-using agent** for IT support tickets. It does not
 just classify a ticket or show a dashboard: it retrieves cited guidance, forms a
