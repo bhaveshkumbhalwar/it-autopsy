@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import './index.css'
 
-/* ─── Types ─────────────────────────────────────────────────────────── */
+/* ─── Types ─────────────────────────────────────────────────────────── -*/
 type CaseRow = {
   id: string; issue_text: string; os: string; status: string
   outcome: string | null; priority?: string; created_at: string; updated_at?: string
