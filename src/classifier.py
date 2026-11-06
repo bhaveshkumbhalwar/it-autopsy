@@ -14,7 +14,7 @@ separately; it is not a calibrated probability.
 This is a deterministic, local baseline. It does not require an LLM.
 """
 
-from __future__ import annotations
+from __future__ import annotations 
 
 import json
 import re
