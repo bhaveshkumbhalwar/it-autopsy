@@ -9,6 +9,7 @@ import {
   Clock,
   FileSearch,
   Gauge,
+  Info,
   Loader2,
   Play,
   Sparkles,
@@ -29,7 +30,7 @@ import {
 } from 'recharts'
 import { api, type Dashboard } from '../lib/api'
 import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, SectionTitle } from '../components/ui'
-import { formatMs, formatPercent, relativeTime, SEVERITY_COLORS, STATUS_STYLES } from '../lib/format'
+import { formatMs, relativeTime, SEVERITY_COLORS, STATUS_STYLES } from '../lib/format'
 import { useIncludeDemo } from '../lib/demo'
 import { DemoToggle } from '../components/DemoToggle'
 
@@ -71,27 +72,37 @@ export default function DashboardPage() {
   const totals = data?.totals
   const hasData = (totals?.executions ?? 0) > 0
 
+  const failed = totals?.failed ?? 0
+  const healthy = totals?.healthy ?? (totals ? totals.success + totals.recovered + totals.partial : 0)
+  const total = totals?.executions ?? 0
+
   const stats = [
     {
       label: 'Executions analysed',
-      value: totals?.executions ?? 0,
+      value: total,
       icon: FileSearch,
       hint: `${totals?.analyses ?? 0} analyses`,
     },
     { label: 'Agents tracked', value: totals?.agents ?? 0, icon: Activity, hint: 'distinct agent names' },
     {
-      label: 'Successful',
-      value: totals?.success ?? 0,
+      // "Completed", not "healthy": a partial run is not a healthy one, it is
+      // one that finished. The split in the subtext keeps that visible.
+      label: 'Completed (success + recovered + partial)',
+      value: healthy,
       icon: CheckCircle2,
-      hint: `${totals?.partial ?? 0} partial · ${totals?.recovered ?? 0} recovered`,
+      hint: total
+        ? `${totals?.success ?? 0} success · ${totals?.recovered ?? 0} recovered · ${totals?.partial ?? 0} partial`
+        : 'no runs yet',
       tone: 'text-emerald-600 dark:text-emerald-400',
     },
     {
       label: 'Failed',
-      value: totals?.failed ?? 0,
+      value: failed,
       icon: XCircle,
-      hint: `${formatPercent(totals?.failure_rate)} failure rate`,
+      // Never a rate out of nothing: with no runs there is no percentage.
+      hint: total ? `${failed} of ${total} ingested runs failed` : 'no runs yet',
       tone: 'text-rose-600 dark:text-rose-400',
+      info: 'This only covers runs you submitted for analysis, not your production failure rate.',
     },
   ]
 
@@ -119,11 +130,17 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon, hint, tone }) => (
+        {stats.map(({ label, value, icon: Icon, hint, tone, info }) => (
           <Card key={label} className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <span className="text-[12px] font-medium text-muted-app">{label}</span>
-              <Icon className={`h-4 w-4 ${tone ?? 'text-muted-app'}`} />
+              {info ? (
+                <span title={info} aria-label={info} className="shrink-0 cursor-help">
+                  <Info className="h-4 w-4 text-muted-app" />
+                </span>
+              ) : (
+                <Icon className={`h-4 w-4 shrink-0 ${tone ?? 'text-muted-app'}`} />
+              )}
             </div>
             {loading ? (
               <Skeleton className="mt-2 h-8 w-16" />
@@ -236,7 +253,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div>
         {/* Recent: full width — the category breakdown lives on Failure Analytics */}
         <Card className="p-4">
           <SectionTitle
@@ -290,6 +307,9 @@ export default function DashboardPage() {
         />
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {[
+            { id: 'clean-success', title: 'Clean successful run', icon: CheckCircle2 },
+            { id: 'rate-limit-recovered', title: '429 recovered by retry', icon: Activity },
+            { id: 'partial-result', title: 'Partial result', icon: FileSearch },
             { id: 'tool-timeout', title: 'Search API timeout', icon: Clock },
             { id: 'reasoning-contradiction', title: 'Answer contradicts tool result', icon: AlertOctagon },
             { id: 'infinite-loop', title: 'Repeated identical tool calls', icon: Loader2 },
@@ -312,6 +332,7 @@ export default function DashboardPage() {
 }
 
 const SEVERITY_STYLES_TONE = {
+  NONE: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25',
   LOW: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25',
   MODERATE: 'bg-amber-500/12 text-amber-700 dark:text-amber-400 border-amber-500/25',
   HIGH: 'bg-orange-500/12 text-orange-700 dark:text-orange-400 border-orange-500/25',

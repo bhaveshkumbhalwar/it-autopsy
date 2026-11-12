@@ -13,3 +13,7 @@ reportlab==5.1.0
 pytest==9.2.0
 # PostgreSQL (optional): uncomment and set DATABASE_URL=postgresql+psycopg://...
 # psycopg[binary]==3.2.3
+
+# Used by the tests that execute generated snippets (a `requests` timeout is a
+# common agent failure, so its catch clause is proven to import correctly).
+requests>=2.31

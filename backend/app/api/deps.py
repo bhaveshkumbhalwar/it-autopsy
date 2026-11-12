@@ -90,6 +90,16 @@ def _primary_title(analysis: Analysis) -> str | None:
     return None
 
 
+def _ml_agrees(analysis) -> bool | None:
+    """Whether the classifier's hint matches the rule result, when there is one."""
+    if not analysis.ml_prediction:
+        return None
+    categories = [c.get("category") for c in (analysis.categories or []) if isinstance(c, dict)]
+    if not categories:
+        return None
+    return analysis.ml_prediction in categories
+
+
 def analysis_to_dict(analysis: Analysis, include_heavy: bool = True) -> dict[str, Any]:
     data = {
         "id": analysis.id,
@@ -118,6 +128,10 @@ def analysis_to_dict(analysis: Analysis, include_heavy: bool = True) -> dict[str
             "prediction": analysis.ml_prediction,
             "confidence": analysis.ml_confidence,
             "top": analysis.ml_top or [],
+            # A hint beside the rules, with what it means here: the page shows
+            # it as secondary, never as the diagnosis.
+            "hint_only": True,
+            "agrees": _ml_agrees(analysis),
         },
         "fixes": analysis.fixes or [],
         "detection_notes": analysis.detection_notes,
@@ -158,6 +172,9 @@ def execution_to_dict(
         "tool_call_count": execution.tool_call_count,
         "is_demo": execution.is_demo,
         "redactions": execution.redactions,
+        # Failed steps a later step made good: the detail page says
+        # "recovered after N retries" from this.
+        "retry_count": execution.retry_count or 0,
         "created_at": execution.created_at.isoformat() if execution.created_at else None,
         "analysis_count": len(execution.analyses) if execution.analyses is not None else 0,
         "content_hash": (execution.content_hash or "")[:16],

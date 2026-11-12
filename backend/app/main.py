@@ -34,6 +34,16 @@ async def lifespan(app: FastAPI):
         logger.info("ML failure classifier ready")
     except Exception as exc:  # pragma: no cover - training is best effort
         logger.warning("ML classifier unavailable: %s", exc)
+    # Put back any sample run that is missing; an existing one is never touched.
+    if settings.seed_demos:
+        try:
+            from app.samples.seed import ensure_demos_on_startup
+
+            seeded = ensure_demos_on_startup()
+            if seeded["created"]:
+                logger.info("Restored missing demo runs: %s", ", ".join(seeded["created"]))
+        except Exception as exc:  # pragma: no cover - seeding is best effort
+            logger.warning("Demo seeding skipped: %s", exc)
     yield
 
 

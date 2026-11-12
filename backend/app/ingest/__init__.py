@@ -30,6 +30,18 @@ ADAPTERS = {
 MAX_TEXT_CHARS = 2_000_000
 
 
+def safe_filename(filename: str | None) -> str | None:
+    """The upload's name with any directory part stripped.
+
+    Browsers send a bare name, but never trust that: a client can send a full
+    local path, and it would otherwise be stored and printed in a report.
+    """
+    if not filename:
+        return None
+    name = filename.replace("\\", "/").rsplit("/", 1)[-1].strip()
+    return name or None
+
+
 def validate_filename(filename: str | None) -> None:
     if not filename:
         return

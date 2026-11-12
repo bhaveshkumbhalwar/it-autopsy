@@ -19,6 +19,7 @@ export function categoryLabel(value: string | null | undefined): string {
 }
 
 export const SEVERITY_STYLES: Record<Severity, string> = {
+  NONE: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25',
   LOW: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25',
   MODERATE: 'bg-amber-500/12 text-amber-700 dark:text-amber-400 border-amber-500/25',
   HIGH: 'bg-orange-500/12 text-orange-700 dark:text-orange-400 border-orange-500/25',
@@ -34,6 +35,7 @@ export const STATUS_STYLES: Record<string, string> = {
 }
 
 export const SEVERITY_COLORS: Record<Severity, string> = {
+  NONE: '#10b981',
   LOW: '#10b981',
   MODERATE: '#f59e0b',
   HIGH: '#f97316',

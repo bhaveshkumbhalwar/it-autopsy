@@ -55,13 +55,16 @@ FAILURE_LABELS: dict[str, str] = {
 
 
 class Severity(str, Enum):
+    # NONE is only ever used for a run with no detected failure at all: the
+    # dashboard and the detail page read it as "healthy", not as a low score.
+    NONE = "NONE"
     LOW = "LOW"
     MODERATE = "MODERATE"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
 
-SEVERITY_ORDER = {"LOW": 0, "MODERATE": 1, "HIGH": 2, "CRITICAL": 3}
+SEVERITY_ORDER = {"NONE": -1, "LOW": 0, "MODERATE": 1, "HIGH": 2, "CRITICAL": 3}
 
 
 class StepType(str, Enum):

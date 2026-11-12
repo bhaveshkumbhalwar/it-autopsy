@@ -152,6 +152,124 @@ DEMOS: dict[str, dict[str, Any]] = {
             "output": None
         },
     },
+    "clean-success": {
+        "label": "Support agent — clean successful run",
+        "framework": "langgraph",
+        "trace": {
+            "execution_id": "healthy-clean-1",
+            "agent_name": "Support Agent",
+            "framework": "langgraph",
+            "status": "success",
+            "started_at": "2024-05-02T09:00:00Z",
+            "ended_at": "2024-05-02T09:00:09Z",
+            "task_description": "Answer the customer question about the refund window.",
+            "steps": [
+                {
+                    "type": "task",
+                    "name": "task received",
+                    "status": "success",
+                    "timestamp": "2024-05-02T09:00:00Z"
+                },
+                {
+                    "type": "llm",
+                    "name": "plan",
+                    "status": "success",
+                    "timestamp": "2024-05-02T09:00:01Z",
+                    "duration_ms": 800,
+                    "output": "look up the refund policy"
+                },
+                {
+                    "type": "tool_call",
+                    "name": "search_kb",
+                    "tool_name": "search_kb",
+                    "status": "success",
+                    "timestamp": "2024-05-02T09:00:03Z",
+                    "duration_ms": 1200,
+                    "tool_arguments": {
+                        "query": "refund window"
+                    },
+                    "tool_result": "Refunds are accepted within 30 days of purchase."
+                },
+                {
+                    "type": "llm",
+                    "name": "compose answer",
+                    "status": "success",
+                    "timestamp": "2024-05-02T09:00:06Z",
+                    "duration_ms": 2400,
+                    "output": "Within 30 days."
+                },
+                {
+                    "type": "output",
+                    "name": "final answer",
+                    "status": "success",
+                    "timestamp": "2024-05-02T09:00:09Z",
+                    "output": "Refunds are accepted within 30 days of purchase."
+                }
+            ],
+            "output": "Refunds are accepted within 30 days of purchase."
+        },
+    },
+    "partial-result": {
+        "label": "Report agent — partial result (one export missing)",
+        "framework": "langgraph",
+        "trace": {
+            "execution_id": "healthy-partial-1",
+            "agent_name": "Report Agent",
+            "framework": "langgraph",
+            "status": "partial",
+            "started_at": "2024-05-02T10:00:00Z",
+            "ended_at": "2024-05-02T10:01:20Z",
+            "task_description": "Summarise Q1 and Q2 revenue from two exports.",
+            "steps": [
+                {
+                    "type": "task",
+                    "name": "task received",
+                    "status": "success",
+                    "timestamp": "2024-05-02T10:00:00Z"
+                },
+                {
+                    "type": "tool_call",
+                    "name": "read_csv",
+                    "tool_name": "read_csv",
+                    "status": "success",
+                    "timestamp": "2024-05-02T10:00:03Z",
+                    "duration_ms": 900,
+                    "tool_arguments": {
+                        "path": "q1.csv"
+                    },
+                    "tool_result": "Q1 revenue 120k"
+                },
+                {
+                    "type": "tool_call",
+                    "name": "read_csv",
+                    "tool_name": "read_csv",
+                    "status": "failed",
+                    "timestamp": "2024-05-02T10:00:20Z",
+                    "duration_ms": 900,
+                    "tool_arguments": {
+                        "path": "q2.csv"
+                    },
+                    "error": "FileNotFoundError: q2.csv not found"
+                },
+                {
+                    "type": "llm",
+                    "name": "summarise available data",
+                    "status": "success",
+                    "timestamp": "2024-05-02T10:01:10Z",
+                    "duration_ms": 4000,
+                    "output": "Q1 only."
+                },
+                {
+                    "type": "output",
+                    "name": "partial answer",
+                    "status": "success",
+                    "timestamp": "2024-05-02T10:01:20Z",
+                    "output": "Q1 revenue was 120k. Q2 export could not be read."
+                }
+            ],
+            "output": "Q1 revenue was 120k. Q2 export could not be read."
+        },
+    },
 }
 
 

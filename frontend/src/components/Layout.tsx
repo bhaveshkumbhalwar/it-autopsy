@@ -112,7 +112,9 @@ export default function Layout() {
             </button>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1400px] flex-1 p-4 sm:p-6">
+        {/* Every page gets the same content box, centred in the space right of
+            the sidebar (the wrapper no longer reserves its width twice). */}
+        <main className="mx-auto w-full max-w-[1280px] flex-1 p-4 py-5 sm:p-6">
           <Outlet />
         </main>
       </div>

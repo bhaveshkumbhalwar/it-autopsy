@@ -32,7 +32,7 @@ BASE_WEIGHT: dict[str, float] = {
     FailureCategory.AUTH.value: 3.0,
 }
 
-SEVERITY_SCORE = {Severity.LOW: 1.0, Severity.MODERATE: 2.0, Severity.HIGH: 3.0, Severity.CRITICAL: 4.0}
+SEVERITY_SCORE = {Severity.NONE: 0.0, Severity.LOW: 1.0, Severity.MODERATE: 2.0, Severity.HIGH: 3.0, Severity.CRITICAL: 4.0}
 
 
 @dataclass
@@ -53,7 +53,8 @@ def assess(
     repeated_failures: int,
 ) -> SeverityResult:
     if not categories:
-        return SeverityResult(Severity.LOW, 0.0, [{"factor": "status", "detail": "Execution completed without a detected failure.", "weight": 0}])
+        # Nothing went wrong: that is not a low-severity failure, it is no failure.
+        return SeverityResult(Severity.NONE, 0.0, [{"factor": "status", "detail": "Execution completed without a detected failure.", "weight": 0}])
 
     score = max(BASE_WEIGHT.get(c, 1.5) for c in categories)
     factors: list[dict[str, Any]] = [

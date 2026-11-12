@@ -59,6 +59,9 @@ class Execution(Base):
     step_count: Mapped[int] = mapped_column(Integer, default=0)
     tool_call_count: Mapped[int] = mapped_column(Integer, default=0)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # A failed step that a later step of the same run made good ("429, then the
+    # retry succeeded"). Kept so the detail page can say why a run is healthy.
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
     redactions: Mapped[int] = mapped_column(Integer, default=0)
     # sha256 of the normalized trace: the same trace is one execution, not many.
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)

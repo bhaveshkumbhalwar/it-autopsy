@@ -78,8 +78,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T
 }
 
-export type Severity = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL'
-export type ExecStatus = 'success' | 'failed' | 'partial' | 'unknown'
+// NONE means "no failure was detected", which is not the same as a low score.
+export type Severity = 'NONE' | 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL'
+export type ExecStatus = 'success' | 'failed' | 'partial' | 'recovered' | 'unknown'
 
 export type ConfidenceFactor = { factor: string; detail: string; weight: number }
 
@@ -141,7 +142,7 @@ export type TimelineItem = {
   is_failure: boolean
 }
 
-export type FixSnippet = { language: string; code: string }
+export type FixSnippet = { language: string; code: string; note?: string }
 
 export type RecommendedFix = {
   id: string | null
@@ -165,6 +166,7 @@ export type TimelineEvidence = {
   weight: number | null
   caused_by: number | null
   repeats_step_error: boolean
+  adds_information: boolean
 }
 
 export type MergedTimelineItem = {
@@ -183,7 +185,15 @@ export type MergedTimelineItem = {
   summary: string | null
   detail: { input: string | null; output: string | null; error: string | null; tool_arguments: string | null; metadata: string | null }
   evidence: TimelineEvidence[]
+  evidence_summary: string | null
   key: string
+}
+
+export type Observation = {
+  kind: 'retry' | 'slow_step' | 'large_payload'
+  title: string
+  detail: string
+  step_numbers: number[]
 }
 
 export type MergedTimeline = {
@@ -227,7 +237,14 @@ export type Analysis = {
   detection_notes: string[]
   created_at: string | null
   severity_detail?: { severity: string; score: number; factors: { factor: string; detail: string; weight: number }[] }
-  ml?: { used: boolean; prediction: string | null; confidence: number | null; top: [string, number][] }
+  ml?: {
+    used?: boolean
+    prediction: string | null
+    confidence: number | null
+    top: [string, number][]
+    hint_only?: boolean
+    agrees?: boolean | null
+  }
 }
 
 export type ExecutionSummary = {
@@ -249,6 +266,7 @@ export type ExecutionSummary = {
   redactions: number
   created_at: string | null
   analysis_count: number
+  retry_count: number
   latest_analysis?: Partial<Analysis>
 }
 
@@ -271,6 +289,8 @@ export type Dashboard = {
     partial: number
     recovered: number
     failure_rate: number
+    healthy: number
+    healthy_rate: number | null
     avg_duration_ms: number | null
     analyses: number
     demo_executions: number
@@ -367,13 +387,16 @@ export const api = {
     })
     return request<{ items: ExecutionSummary[]; total: number }>(`/executions?${search.toString()}`)
   },
-  execution: (id: number) => request<{ execution: ExecutionDetail; analyses: Analysis[]; timeline: MergedTimeline }>(`/executions/${id}`),
+  execution: (id: number) =>
+    request<{ execution: ExecutionDetail; analyses: Analysis[]; timeline: MergedTimeline; observations: Observation[] }>(
+      `/executions/${id}`,
+    ),
   deleteExecution: (id: number) => request<{ deleted: number }>(`/executions/${id}`, { method: 'DELETE' }),
   reanalyze: (id: number, use_llm: boolean) =>
     request<{ analysis: Analysis }>(`/executions/${id}/analyze`, { method: 'POST', body: JSON.stringify({ use_llm }) }),
   dashboard: (includeDemo = false) => request<Dashboard>(`/dashboard?include_demo=${includeDemo}`),
   analytics: (includeDemo = false) => request<Analytics>(`/analytics?include_demo=${includeDemo}`),
-  compare: (ids: number[]) => request<{ items: CompareItem[]; shared_categories: string[]; summary: Record<string, number> }>(`/compare?ids=${ids.join(',')}`),
+  compare: (ids: number[]) => request<CompareResult>(`/compare?ids=${ids.join(',')}`),
   settings: () => request<AppSettings>('/settings'),
   updateSettings: (body: Record<string, unknown>) => request<{ updated: Record<string, unknown> }>('/settings', { method: 'PUT', body: JSON.stringify(body) }),
   mlMetrics: () => request<MlMetrics>('/ml/metrics'),
@@ -395,6 +418,65 @@ export type CompareItem = {
   root_cause: string | null
   confidence: number | null
   tools: string[]
+}
+
+export type DiffCell = {
+  present: boolean
+  kind: string | null
+  tool: string | null
+  status: string | null
+  duration_ms: number | null
+  tokens: number | null
+  args: string | null
+  error: string | null
+  summary: string | null
+  label: string
+}
+
+export type DiffRow = {
+  number: number
+  cells: DiffCell[]
+  differing_fields: string[]
+  is_divergence: boolean
+}
+
+export type CompareDiff = {
+  runs: {
+    id: number | null
+    name: string
+    execution_id: string | null
+    status: string | null
+    step_count: number
+    duration_ms: number | null
+    tool_calls: number | null
+    categories: string[]
+    root_cause: string | null
+    agent_name?: string | null
+    outcome?: string
+  }[]
+  rows: DiffRow[]
+  first_divergence: DiffRow | null
+  identical: boolean
+  divergence_count: number
+  total_steps: number
+  summary: string
+  summary_source: 'rules' | 'llm'
+  llm_note: string | null
+  /** False when the runs answer different questions: the banner explains why. */
+  comparable: boolean
+  comparison_banner: string | null
+  comparison_caveat: string | null
+  outcome_difference: string | null
+  outcomes: string[]
+  same_agent: boolean
+  same_task: boolean
+}
+
+export type CompareResult = {
+  items: CompareItem[]
+  shared_categories: string[]
+  summary: Record<string, number>
+  comparison: CompareDiff
 }
 
 export type MlMetrics = {

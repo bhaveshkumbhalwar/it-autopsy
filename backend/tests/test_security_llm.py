@@ -184,6 +184,13 @@ def client_and_db(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "api_token", "", raising=False)
     # The ingest limiter is per process and this fixture runs many ingests.
     monkeypatch.setattr(settings, "rate_limit_analyze", 10_000, raising=False)
+    # The health check has its own tight limiter (30/min); the whole suite
+    # shares one process, so without this the badge test sees a 429 from earlier
+    # tests instead of the state it is asserting on.
+    monkeypatch.setattr(settings, "rate_limit_requests", 10_000, raising=False)
+    from app.api import deps as api_deps
+
+    api_deps._BUCKETS.clear()
     with TestClient(app) as client:
         yield client, database.SessionLocal
 

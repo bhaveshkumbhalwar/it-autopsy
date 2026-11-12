@@ -235,3 +235,103 @@ def test_api_returns_fixes_and_timeline_for_a_demo(demo_id):
     timeline = build_timeline(trace, analysis)
     assert analysis["fixes"] and timeline["items"]
     assert any(item["is_root_cause"] for item in timeline["items"])
+
+
+# --------------------------------------------------------------------------- #
+# Follow-up: every failure family has a snippet, and every snippet says what
+# framework it is for.
+# --------------------------------------------------------------------------- #
+
+from app.core.models import FailureCategory as F  # noqa: E402
+from app.engine.snippets import GENERIC_CATEGORY, LANGUAGES, TEMPLATES  # noqa: E402
+
+
+def test_auth_and_database_have_their_own_templates():
+    assert F.AUTH.value in TEMPLATES
+    assert F.DATABASE.value in TEMPLATES
+    assert F.AUTH.value != F.DATABASE.value
+
+
+def test_every_failure_family_gets_a_snippet():
+    """A family with no mechanical patch still gets the labelled generic guard."""
+    missing = [c.value for c in F if c.value not in TEMPLATES]
+    assert missing == [], f"families without a snippet: {missing}"
+    assert TEMPLATES[GENERIC_CATEGORY]
+    assert LANGUAGES[GENERIC_CATEGORY] == "python"
+
+
+def test_auth_snippet_fails_fast_and_names_the_credential():
+    trace, analysis = _diagnose(
+        _trace([{"type": "tool_call", "tool_name": "call_api", "status": "failed", "error": "401 Unauthorized: invalid api key"}])
+    )
+    codes = " ".join(fix["snippet"]["code"] for fix in analysis["fixes"])
+    assert "401" in codes
+    assert "PermissionError" in codes
+    assert "will not help" in codes  # never retry a rejected credential
+
+
+def test_auth_snippet_does_not_print_a_rate_limit_status_in_credentials_code():
+    """"429 then 401" in one message must not produce "rejected (429)"."""
+    trace, analysis = _diagnose(
+        _trace([{"type": "tool_call", "tool_name": "call_api", "status": "failed", "error": "HTTP 429, then 401 Unauthorized"}])
+    )
+    fix = next((f for f in analysis["fixes"] if f.get("family") == "authentication_failure"), None)
+    if fix is not None:
+        assert "rejected (401)" in fix["snippet"]["code"]
+        assert "rejected (429)" not in fix["snippet"]["code"]
+
+
+def test_database_snippet_is_bounded_and_retries_only_transient_errors():
+    trace, analysis = _diagnose(
+        _trace(
+            [
+                {
+                    "type": "tool_call",
+                    "tool_name": "db_query",
+                    "status": "failed",
+                    "error": "psycopg2.OperationalError: could not connect to database orders on port 5432: connection refused",
+                }
+            ]
+        )
+    )
+    fix = next((f for f in analysis["fixes"] if f.get("family") == "database_failure"), None)
+    assert fix is not None, [f.get("family") for f in analysis["fixes"]]
+    code = fix["snippet"]["code"]
+    assert "pool_pre_ping=True" in code
+    assert "connection refused" in code  # the transient list is real
+    assert "orders" in code
+
+
+@pytest.mark.parametrize("framework", ["langgraph", "crewai", "autogen"])
+def test_every_snippet_says_which_framework_to_adapt_it_to(framework):
+    payload = _trace([{"type": "tool_call", "tool_name": "fetch_page", "status": "failed", "error": "Read timeout=30"}])
+    payload["framework"] = framework
+    trace, analysis = _diagnose(payload)
+    assert analysis["fixes"]
+    for fix in analysis["fixes"]:
+        note = fix["snippet"]["note"]
+        assert note.startswith("Generic Python - adapt to your framework (")
+        assert framework in note
+        assert fix["snippet"]["code"].lstrip().startswith(("import", "from", "#", "def", "async"))
+
+
+def test_snippet_states_when_the_trace_names_no_framework():
+    payload = _trace([{"type": "tool_call", "tool_name": "fetch_page", "status": "failed", "error": "Read timeout=30"}])
+    payload.pop("framework")
+    trace, analysis = _diagnose(payload)
+    assert "unspecified framework" in analysis["fixes"][0]["snippet"]["note"]
+
+
+def test_reasoning_failure_is_honest_about_having_no_mechanical_patch():
+    trace, analysis = _diagnose(
+        _trace(
+            [
+                {"type": "llm", "status": "success", "output": "the answer is 42"},
+                {"type": "llm", "status": "failed", "error": "verification step found the answer contradicts its own evidence"},
+            ]
+        )
+    )
+    assert analysis["fixes"], "a reasoning failure must still offer a next step"
+    fix = analysis["fixes"][0]
+    assert fix["generic"] is True
+    assert "not a mechanical patch" in fix["caption"]

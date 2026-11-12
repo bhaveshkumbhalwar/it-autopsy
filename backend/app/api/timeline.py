@@ -39,6 +39,32 @@ def _repeats(quote: Any, step_text: str) -> bool:
     return clean[:120] in step_text
 
 
+def _adds_information(row: dict[str, Any], step_text: str) -> bool:
+    """True when the evidence says something the step's own text does not.
+
+    A rule that quotes the error the step already displays is confirming it, not
+    adding to it: the page folds those into a count instead of repeating text.
+    """
+    quote = str(row.get("quote") or "").strip()
+    if not quote:
+        return bool(row.get("why"))
+    return not _repeats(quote, step_text)
+
+
+def _evidence_summary(rows: list[dict[str, Any]], informative: int) -> str:
+    """A one-line label for a step's evidence, e.g. "2 evidence rows (rule +0.25, LLM)"."""
+    from collections import Counter
+
+    sources = Counter(str(row.get("source") or "rule") for row in rows)
+    parts = []
+    for source, _count in sources.items():
+        weight = sum(float(row.get("weight") or 0) for row in rows if str(row.get("source") or "rule") == source)
+        label = source.upper() if source.lower() == "llm" else source
+        parts.append(f"{label}{f' +{weight:.2f}' if weight else ''}")
+    suffix = "" if informative == len(rows) else f", {len(rows) - informative} repeating the step"
+    return f"{len(rows)} evidence row{'' if len(rows) == 1 else 's'} ({', '.join(parts)}{suffix})"
+
+
 def _step_kind(step_type: str) -> str:
     return {
         "task": "task",
@@ -92,6 +118,90 @@ def _step_title(step: dict[str, Any], kind: str) -> str:
     return name or "Step"
 
 
+def _status(status: Any) -> str:
+    """A step status a reader understands; never the literal "unknown"."""
+    value = str(status or "").strip().lower()
+    return "success" if value in {"", "unknown", "none"} else value
+
+
+# --------------------------------------------------------------------------- #
+# Healthy runs: observations instead of a root cause
+# --------------------------------------------------------------------------- #
+
+SLOW_STEP_MS = 5000
+LARGE_OUTPUT_CHARS = 8000
+
+
+def build_observations(trace: dict[str, Any], analysis: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Things worth knowing about a run that did not fail.
+
+    Only what the trace itself shows: a slow step, retries, an unusually large
+    payload. Nothing here is a failure, and none of it is a recommendation.
+    """
+    # Healthy means the run did not fail: success, or recovered. A partial run
+    # still has a cause behind what was missing, so it is not described here.
+    if not analysis or str(analysis.get("status") or "").lower() not in {"success", "recovered"}:
+        return []
+    steps = trace.get("steps") or []
+    out: list[dict[str, Any]] = []
+
+    retries = [
+        step
+        for step in steps
+        if _step_kind(str(step.get("type"))) == "retry"
+        or "retry" in str(step.get("name") or "").lower()
+    ]
+    if retries:
+        failed_before = [
+            step for step in steps if _status(step.get("status")) == "failed"
+        ]
+        error = next((_clean(step.get("error"), 160) for step in failed_before if step.get("error")), "")
+        out.append(
+            {
+                "kind": "retry",
+                "title": f"Recovered after {len(retries)} {_plural(len(retries), 'retry', 'retries')}",
+                "detail": error or "A step failed and a later attempt succeeded.",
+                "step_numbers": [((step.get("index") or 0) + 1) for step in retries],
+            }
+        )
+
+    for step in steps:
+        duration = step.get("duration_ms")
+        if isinstance(duration, (int, float)) and duration >= SLOW_STEP_MS:
+            out.append(
+                {
+                    "kind": "slow_step",
+                    "title": f"Slow step: {_step_title(step, _step_kind(str(step.get('type'))))}",
+                    "detail": f"Took {round(duration / 1000, 1)}s.",
+                    "step_numbers": [(step.get("index") or 0) + 1],
+                }
+            )
+
+    biggest = 0
+    biggest_step = None
+    for step in steps:
+        size = len(str(step.get("output") or step.get("tool_result") or ""))
+        if size > biggest:
+            biggest, biggest_step = size, step
+    if biggest_step is not None and biggest >= LARGE_OUTPUT_CHARS:
+        out.append(
+            {
+                "kind": "large_payload",
+                "title": "Large token use",
+                "detail": (
+                    f"Step {(biggest_step.get('index') or 0) + 1} returned about "
+                    f"{biggest // 1000}k characters of output, which is a large amount of context."
+                ),
+                "step_numbers": [(biggest_step.get("index") or 0) + 1],
+            }
+        )
+    return out
+
+
+def _plural(count: int, one: str, many: str) -> str:
+    return one if count == 1 else many
+
+
 def build_timeline(
     trace: dict[str, Any],
     analysis: dict[str, Any] | None,
@@ -123,7 +233,7 @@ def build_timeline(
     items: list[dict[str, Any]] = []
     for step in steps:
         kind = _step_kind(str(step.get("type")))
-        status = str(step.get("status") or "unknown")
+        status = _status(step.get("status"))
         node = causal_nodes.get(step.get("index"))
         evidence = by_step.get(step.get("index"), [])
         is_root = bool(node and node.get("role") == "root_cause") or step.get("index") == failed_index
@@ -168,9 +278,14 @@ def build_timeline(
                         "weight": row.get("weight"),
                         "caused_by": row.get("caused_by"),
                         "repeats_step_error": _repeats(row.get("quote"), step_payloads.get(step.get("index"), "")),
+                        "adds_information": _adds_information(row, step_payloads.get(step.get("index"), "")),
                     }
                     for row in evidence
                 ],
+                "evidence_summary": _evidence_summary(
+                    [{"source": row.get("source"), "weight": row.get("weight"), "quote": row.get("quote")} for row in evidence],
+                    len([row for row in evidence if not _repeats(row.get("quote"), step_payloads.get(step.get("index"), ""))]),
+                ) if evidence else None,
                 # Cheap, stable identifier so the page can keep expansion state
                 # across a re-analysis of the same trace.
                 "key": stable_hash([step.get("index"), step.get("type"), step.get("name")])[:12],
@@ -194,6 +309,8 @@ def build_timeline(
                         "source": row.get("source"),
                         "weight": row.get("weight"),
                         "caused_by": row.get("caused_by"),
+                        "repeats_step_error": _repeats(row.get("quote"), step_payloads.get(step.get("index"), "")),
+                        "adds_information": _adds_information(row, step_payloads.get(step.get("index"), "")),
                     }
                 )
         else:

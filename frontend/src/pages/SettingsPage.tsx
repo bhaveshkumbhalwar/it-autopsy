@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { describeApiError } from '../lib/api'
-import { Check, Database, KeyRound, Monitor, Moon, Plug, ShieldCheck, Sun } from 'lucide-react'
-import { api, type AppSettings, type LlmHealth, type MlMetrics } from '../lib/api'
+import { ArrowRight, Check, Database, KeyRound, Monitor, Moon, Plug, ShieldCheck, Sun } from 'lucide-react'
+import { api, type AppSettings, type LlmHealth } from '../lib/api'
 import { Badge, Button, Card, ErrorState, SectionTitle, Skeleton, Toast, inputClass } from '../components/ui'
 import { useTheme } from '../lib/theme'
-import { categoryLabel } from '../lib/format'
 
 function healthTone(health: LlmHealth | null): 'success' | 'warning' | 'danger' | 'neutral' {
   if (!health) return 'neutral'
@@ -37,7 +37,6 @@ function healthLabel(health: LlmHealth | null, checking: boolean): string {
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const [settings, setSettings] = useState<AppSettings | null>(null)
-  const [metrics, setMetrics] = useState<MlMetrics | null>(null)
   const [integrations, setIntegrations] = useState<{ native: string[]; documented: { framework: string; workflow: string }[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -57,7 +56,6 @@ export default function SettingsPage() {
         setRetention(s.preferences.retention_days)
       })
       .catch((e) => setError(describeApiError(e)))
-    api.mlMetrics().then(setMetrics).catch(() => setMetrics(null))
     api.llmHealth().then(setHealth).catch(() => setHealth(null))
     api.integrations().then(setIntegrations).catch(() => setIntegrations(null))
   }
@@ -207,58 +205,19 @@ export default function SettingsPage() {
       </div>
 
       <Card className="p-4">
-        <SectionTitle
-          title="ML classifier evaluation"
-          description="Measured on a held-out split of the labeled corpus — never hardcoded"
-        />
-        {!metrics ? (
-          <Skeleton className="mt-3 h-40 w-full" />
-        ) : (
-          <div className="mt-3 space-y-3">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                { label: '5-fold CV accuracy', value: `${(metrics.cross_validation.accuracy * 100).toFixed(1)}%` },
-                { label: '5-fold CV macro F1', value: metrics.cross_validation.macro_f1.toFixed(3) },
-                { label: 'Holdout accuracy', value: `${(metrics.holdout.accuracy * 100).toFixed(1)}%` },
-                { label: 'Holdout macro F1', value: metrics.holdout.macro_f1.toFixed(3) },
-              ].map((s) => (
-                <div key={s.label} className="rounded-lg border border-app p-2.5">
-                  <p className="text-[11px] text-muted-app">{s.label}</p>
-                  <p className="text-[17px] font-semibold text-app">{s.value}</p>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11.5px] text-muted-app">
-              {metrics.model} · {metrics.dataset.examples} labeled examples · {metrics.dataset.classes} classes ·{' '}
-              {metrics.holdout.samples} held out.
-            </p>
-            <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-2.5 text-[11.5px] text-amber-700 dark:text-amber-400">
-              {metrics.caveat}
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left text-[11.5px]">
-                <thead>
-                  <tr className="border-b border-app text-muted-app">
-                    <th className="py-1.5 pr-3">Category</th>
-                    <th className="px-2 py-1.5">Precision</th>
-                    <th className="px-2 py-1.5">Recall</th>
-                    <th className="px-2 py-1.5">F1</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(metrics.holdout.per_class).map(([label, row]) => (
-                    <tr key={label} className="border-b border-app last:border-0">
-                      <td className="py-1.5 pr-3 text-app">{categoryLabel(label)}</td>
-                      <td className="px-2 py-1.5 text-muted-app">{row.precision.toFixed(2)}</td>
-                      <td className="px-2 py-1.5 text-muted-app">{row.recall.toFixed(2)}</td>
-                      <td className="px-2 py-1.5 text-muted-app">{row['f1-score'].toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <SectionTitle title="Developer" description="Diagnostics that are not part of day-to-day use" />
+        <Link
+          to="/settings/model-quality"
+          className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-app p-2.5 hover:border-brand-500/50"
+        >
+          <span className="min-w-0">
+            <span className="block text-[12.5px] font-medium text-app">Developer: model quality</span>
+            <span className="block text-[11.5px] text-muted-app">
+              The failure classifier's accuracy, and per-category precision and recall on held-out data.
+            </span>
+          </span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-app" />
+        </Link>
       </Card>
 
       <Card className="p-4">

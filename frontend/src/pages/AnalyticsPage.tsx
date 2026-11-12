@@ -55,12 +55,23 @@ export default function AnalyticsPage() {
               <EmptyState title="No analyses yet" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data?.root_causes} margin={{ left: -16, right: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 9.5, fill: 'var(--text-muted)' }} interval={0} angle={-18} textAnchor="end" height={62} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} allowDecimals={false} axisLine={false} tickLine={false} />
+                {/* Horizontal bars: the category names are long, and a
+                    rotated axis tick was both cramped and truncated. */}
+                <BarChart data={data?.root_causes} layout="vertical" margin={{ left: 4, right: 16, top: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={150}
+                    interval={0}
+                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value: string) => (value.length > 22 ? `${value.slice(0, 21)}…` : value)}
+                  />
                   <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12, color: 'var(--text)' }} />
-                  <Bar dataKey="count" radius={[5, 5, 0, 0]}>
+                  <Bar dataKey="count" radius={[0, 5, 5, 0]} barSize={14}>
                     {(data?.root_causes ?? []).map((_, i) => (
                       <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                     ))}

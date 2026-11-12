@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -20,7 +21,15 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { api, describeApiError } from '../lib/api'
-import type { Analysis, ExecutionDetail, MergedTimeline, MergedTimelineItem, RecommendedFix } from '../lib/api'
+import type {
+  Analysis,
+  ExecutionDetail,
+  MergedTimeline,
+  MergedTimelineItem,
+  Observation,
+  RecommendedFix,
+  TimelineEvidence,
+} from '../lib/api'
 import { Badge, Button, Card, EmptyState, ErrorState, SectionTitle, Skeleton } from '../components/ui'
 import {
   categoryLabel,
@@ -54,15 +63,22 @@ export default function ExecutionDetailPage() {
   const [execution, setExecution] = useState<ExecutionDetail | null>(null)
   const [analyses, setAnalyses] = useState<Analysis[]>([])
   const [timeline, setTimeline] = useState<MergedTimeline | null>(null)
+  const [observations, setObservations] = useState<Observation[]>([])
   const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reanalyzing, setReanalyzing] = useState(false)
 
-  const apply = (res: { execution: ExecutionDetail; analyses: Analysis[]; timeline: MergedTimeline }) => {
+  const apply = (res: {
+    execution: ExecutionDetail
+    analyses: Analysis[]
+    timeline: MergedTimeline
+    observations?: Observation[]
+  }) => {
     setExecution(res.execution)
     setAnalyses(res.analyses)
     setTimeline(res.timeline)
+    setObservations(res.observations ?? [])
     setSelected(0)
   }
 
@@ -121,6 +137,9 @@ export default function ExecutionDetailPage() {
   // The timeline describes the newest analysis; older ones share the steps.
   const items = timeline?.items ?? []
   const fixes = analysis.fixes ?? []
+  // "Healthy" is a run the engine found no failure in. A partial run still has
+  // a cause behind what was missing, so it keeps the root-cause card.
+  const healthy = analysis.status === 'success' || analysis.status === 'recovered'
 
   return (
     <div className="space-y-4">
@@ -145,15 +164,22 @@ export default function ExecutionDetailPage() {
         </div>
       )}
 
-      <RootCauseCard analysis={analysis} timeline={timeline} />
+      {healthy ? (
+        <NoFailureCard analysis={analysis} execution={execution} observations={observations} />
+      ) : (
+        <RootCauseCard analysis={analysis} timeline={timeline} />
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+      <div className={healthy ? 'grid gap-4' : 'grid gap-4 lg:grid-cols-5'}>
+        <div className={healthy ? '' : 'lg:col-span-3'}>
           <TimelineCard timeline={timeline} items={items} />
         </div>
-        <div className="lg:col-span-2">
-          <FixesCard fixes={fixes} />
-        </div>
+        {/* A run with no failure gets no recommended fix: there is nothing to fix. */}
+        {!healthy && (
+          <div className="lg:col-span-2">
+            <FixesCard fixes={fixes} />
+          </div>
+        )}
       </div>
 
       <HowDiagnosed analysis={analysis} />
@@ -262,6 +288,52 @@ function Header({
           </select>
         )}
       </div>
+    </Card>
+  )
+}
+
+/* ------------------------------------------------------------- no failure */
+
+function NoFailureCard({
+  analysis,
+  execution,
+  observations,
+}: {
+  analysis: Analysis
+  execution: ExecutionDetail
+  observations: Observation[]
+}) {
+  const retries = execution.retry_count ?? 0
+  const recovered = analysis.status === 'recovered' || retries > 0
+  const headline = recovered
+    ? `Recovered after ${retries || 1} ${retries === 1 ? 'retry' : 'retries'}`
+    : 'No failure detected'
+  return (
+    <Card className="border-l-4 border-l-emerald-500 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold tracking-wide text-emerald-600 uppercase dark:text-emerald-400">
+          <CheckCircle2 className="h-3.5 w-3.5" /> {headline}
+        </span>
+        <Badge className={STATUS_STYLES[analysis.status]}>{analysis.status}</Badge>
+      </div>
+      <p className="mt-2 text-[14px] leading-relaxed text-app">
+        {recovered
+          ? 'A step failed and a later attempt succeeded, so the run still produced its result. The failed attempt is on the timeline below; nothing here needs fixing.'
+          : 'Every step completed and the run produced its result. The engine found no failure category, so there is no root cause and no fix to recommend.'}
+      </p>
+      {observations.length > 0 && (
+        <div className="mt-3">
+          <p className="text-[11px] font-medium tracking-wide text-muted-app uppercase">Worth knowing</p>
+          <ul className="mt-1.5 space-y-1.5">
+            {observations.map((item) => (
+              <li key={`${item.kind}-${item.step_numbers.join('-')}`} className="rounded-lg border border-app p-2.5">
+                <p className="text-[12.5px] font-medium text-app">{item.title}</p>
+                <p className="mt-0.5 text-[12px] text-muted-app">{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </Card>
   )
 }
@@ -460,34 +532,61 @@ function TimelineRow({
             {item.detail.input && <DetailBlock label="Raw input (redacted)">{item.detail.input}</DetailBlock>}
             {item.detail.tool_arguments && <DetailBlock label="Tool arguments">{item.detail.tool_arguments}</DetailBlock>}
             {item.detail.output && <DetailBlock label="Raw output (redacted)">{item.detail.output}</DetailBlock>}
-            {item.evidence.length > 0 && (
-              <div className="space-y-1">
-                {item.evidence.map((ev, i) => (
-                  <div key={i} className="rounded-md border border-app p-2">
-                    <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-muted-app">
-                      <Badge tone="neutral">{ev.field ?? 'field'}</Badge>
-                      {ev.role && (
-                        <Badge tone={ev.role === 'root_cause' ? 'danger' : 'neutral'}>{ev.role.replace('_', ' ')}</Badge>
-                      )}
-                      {ev.source && <span className="font-mono">{ev.source}</span>}
-                      {ev.weight ? <span className="font-mono">+{ev.weight.toFixed(2)} confidence</span> : null}
-                      {ev.repeats_step_error && <span className="italic">repeats the step error above</span>}
-                    </div>
-                    {ev.quote && (
-                      <p className="mt-1 flex gap-1.5 font-mono text-[11px] leading-4 break-words text-app">
-                        <Quote className="mt-0.5 h-3 w-3 shrink-0 text-muted-app" />
-                        <span>{ev.quote}</span>
-                      </p>
-                    )}
-                    {ev.why && <p className="mt-1 text-[11px] text-muted-app">{ev.why}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
+            {item.evidence.length > 0 && <EvidenceRows rows={item.evidence} summary={item.evidence_summary} />}
           </div>
         )}
       </div>
     </li>
+  )
+}
+
+/**
+ * A step's evidence, folded into one line. Rows that only repeat the error the
+ * step already shows are counted, not quoted; a row that adds something keeps
+ * its text, one click away.
+ */
+function EvidenceRows({ rows, summary }: { rows: TimelineEvidence[]; summary?: string | null }) {
+  const [open, setOpen] = useState(false)
+  const informative = rows.filter((row) => row.adds_information !== false)
+  const label = summary ?? `${rows.length} evidence row${rows.length === 1 ? '' : 's'}`
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 text-left text-[10.5px] text-muted-app hover:text-app"
+      >
+        {open ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
+        <Quote className="h-3 w-3 shrink-0" />
+        <span>{label}</span>
+        {informative.length === 0 && rows.length > 0 && <span className="italic">— the step text already says this</span>}
+      </button>
+
+      {open && (
+        <div className="mt-1 space-y-1">
+          {rows.map((ev, i) => (
+            <div key={i} className="rounded-md border border-app p-2">
+              <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-muted-app">
+                <Badge tone="neutral">{ev.field ?? 'field'}</Badge>
+                {ev.role && <Badge tone={ev.role === 'root_cause' ? 'danger' : 'neutral'}>{ev.role.replace('_', ' ')}</Badge>}
+                {ev.source && <span className="font-mono">{ev.source}</span>}
+                {ev.weight ? <span className="font-mono">+{ev.weight.toFixed(2)}</span> : null}
+              </div>
+              {ev.adds_information !== false && ev.quote && (
+                <p className="mt-1 font-mono text-[11px] leading-4 break-words text-app">{ev.quote}</p>
+              )}
+              {ev.adds_information === false && ev.quote && (
+                <p className="mt-1 truncate font-mono text-[11px] text-muted-app" title={ev.quote}>
+                  {ev.quote}
+                </p>
+              )}
+              {ev.why && <p className="mt-1 text-[11px] text-muted-app">{ev.why}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -527,6 +626,11 @@ function FixesCard({ fixes }: { fixes: RecommendedFix[] }) {
 
 function FixBlock({ fix }: { fix: RecommendedFix }) {
   const [copied, setCopied] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const lines = fix.snippet.code.trimEnd().split('\n')
+  const long = lines.length > 26
+  const visible = !long || showAll ? lines : lines.slice(0, 26)
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(fix.snippet.code)
@@ -536,19 +640,21 @@ function FixBlock({ fix }: { fix: RecommendedFix }) {
       setCopied(false)
     }
   }
+
   return (
     <div className="rounded-lg border border-app">
-      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-app p-2.5">
+      {/* Title, why, and the one control a fix has, always in the same corner. */}
+      <div className="flex items-start justify-between gap-2 p-2.5 pb-1.5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+            <Lightbulb className="h-3.5 w-3.5 shrink-0 text-amber-500" />
             <p className="text-[12.5px] font-semibold text-app">{fix.caption || fix.title}</p>
             {fix.priority && <Badge tone={PRIORITY_TONE[fix.priority] ?? 'neutral'}>{fix.priority}</Badge>}
           </div>
           {fix.why && <p className="mt-0.5 text-[11.5px] break-words text-muted-app">{fix.why}</p>}
           {fix.applies_to.length > 0 && (
             <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-app">
-              <Wrench className="h-3 w-3" />
+              <Wrench className="h-3 w-3 shrink-0" />
               {fix.applies_to.map((part, i) => (
                 <span key={i} className="font-mono">
                   {part}
@@ -558,17 +664,34 @@ function FixBlock({ fix }: { fix: RecommendedFix }) {
             </p>
           )}
         </div>
-        <Button size="sm" variant="ghost" onClick={copy} title="Copy this snippet">
+        <Button size="sm" variant="ghost" onClick={copy} title="Copy this snippet" className="shrink-0">
           {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
           {copied ? 'Copied' : 'Copy'}
         </Button>
       </div>
-      <p className="px-2.5 pt-2 text-[11px] font-medium text-muted-app">
-        {fix.id ? `Template: ${fix.id}` : 'Suggested fix'}
+
+      <p className="px-2.5 text-[11px] text-muted-app">
+        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 font-medium text-app">
+          {fix.snippet.note ?? 'Generic Python - adapt to your framework'}
+        </span>
       </p>
-      <pre className="m-2.5 mt-1 max-h-[360px] overflow-auto rounded-md bg-[var(--surface-muted)] p-2.5 font-mono text-[11px] leading-5 text-app">
-        <code>{fix.snippet.code}</code>
+
+      {/* No nested scroll: the code block is as tall as the code, and a long
+          snippet folds behind "Show code" instead of scrolling inside itself. */}
+      <pre className="mx-2.5 mt-1.5 overflow-x-auto rounded-md bg-[var(--surface-muted)] p-2.5 font-mono text-[11px] leading-[1.45] text-app">
+        <code>{visible.join('\n')}</code>
       </pre>
+      {long && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="mb-2 ml-2.5 flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:underline dark:text-brand-400"
+        >
+          {showAll ? <ChevronRight className="h-3 w-3 rotate-[-90deg]" /> : <ChevronDown className="h-3 w-3" />}
+          {showAll ? 'Collapse code' : `Show code (${lines.length - 26} more lines)`}
+        </button>
+      )}
+      {!long && <div className="h-2" />}
     </div>
   )
 }
@@ -605,14 +728,20 @@ function HowDiagnosed({ analysis }: { analysis: Analysis }) {
               ))}
             </ul>
 
-            <SubTitle>Classifier guess</SubTitle>
+            <SubTitle>Classifier hint</SubTitle>
             {analysis.ml?.prediction ? (
               <p className="text-[11.5px] text-muted-app">
                 <span className="font-medium text-app">{categoryLabel(analysis.ml.prediction)}</span> ·{' '}
-                {formatPercent(analysis.ml.confidence ?? 0)} — a secondary hint only; the diagnosis above does not depend on it.
+                {formatPercent(analysis.ml.confidence ?? 0)} ·{' '}
+                {analysis.ml.agrees === true
+                  ? 'agrees with the rule result'
+                  : analysis.ml.agrees === false
+                    ? 'differs from the rule result - the rules decide'
+                    : 'no rule matched, so this is the only signal'}{' '}
+                — a hint only; the diagnosis above does not depend on it.
               </p>
             ) : (
-              <p className="text-[11.5px] text-muted-app">No confident classifier guess for this trace.</p>
+              <p className="text-[11.5px] text-muted-app">No confident classifier hint for this trace.</p>
             )}
 
             <SubTitle>LLM result</SubTitle>

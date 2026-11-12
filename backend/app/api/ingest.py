@@ -19,8 +19,8 @@ from app.core.config import settings
 from app.core.models import NormalizedTrace
 from app.core.redact import redact_obj, redact_secret
 from app.db.database import Analysis, Execution, get_session
-from app.engine.analyzer import diagnose
-from app.ingest import ParseError, ingest_bytes, ingest_text
+from app.engine.analyzer import diagnose, recoveries
+from app.ingest import ParseError, ingest_bytes, ingest_text, safe_filename
 from app.samples.demos import get_demo, list_demos
 
 router = APIRouter(tags=["ingest"])
@@ -129,6 +129,9 @@ def _run_analysis(db: Session, execution: Execution, trace: NormalizedTrace, use
     execution.severity = result["severity"]
     execution.primary_category = result["primary_category"]
     execution.categories = [c["category"] for c in result["categories"]]
+    # A failed step that a later step made good: the detail page reports it as
+    # "recovered after N retries" rather than as a cause.
+    execution.retry_count = len(recoveries(trace))
     db.flush()
     execution.analysis_count = len(db.scalars(select(Analysis.id).where(Analysis.execution_pk == execution.id)).all())
 
@@ -225,6 +228,10 @@ async def ingest_upload(
 ):
     rate_limit(request, settings.rate_limit_analyze)
     data = await file.read()
+    # Only the name is kept, never the client's path: an upload arrives as
+    # whatever the browser sends, and a full local path in an agent name would
+    # end up in the stored row and the exported report.
+    safe_name = safe_filename(file.filename)
     if len(data) > settings.max_upload_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -233,7 +240,7 @@ async def ingest_upload(
     try:
         trace, detected, redactions = ingest_bytes(
             data,
-            filename=file.filename,
+            filename=safe_name,
             agent_name=agent_name,
             framework=framework,
             task_description=task_description,

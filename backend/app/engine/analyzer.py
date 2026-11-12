@@ -13,6 +13,9 @@ Design notes
 
 from __future__ import annotations
 
+import json
+import re
+
 from typing import Any
 
 from app.core.config import settings
@@ -247,6 +250,9 @@ def diagnose(trace: NormalizedTrace, use_llm: bool = True, capture_llm: bool = F
     failed_index = root_index if root_index is not None else (rule_dets[0].step_index if rule_dets else first_failed_step(trace))
 
     # ---- ML opinion
+    # The classifier is a hint, never a verdict: it is recorded with its
+    # confidence and shown beside the rule result. It only ever becomes the
+    # diagnosis when no rule fired at all, and then it says so.
     classifier = get_classifier()
     prediction = classifier.predict(_signal_text(trace))
     ml_used = False
@@ -254,18 +260,25 @@ def diagnose(trace: NormalizedTrace, use_llm: bool = True, capture_llm: bool = F
     if prediction and prediction.confidence >= 0.45:
         ml_used = True
         ml_confidence = prediction.confidence
-        detection_notes.append(
-            f"ML classifier suggested {FAILURE_LABELS.get(prediction.label, prediction.label)} "
-            f"(confidence {prediction.confidence:.2f}) on a TF-IDF model."
-        )
-        if not rule_dets:
+        label = FAILURE_LABELS.get(prediction.label, prediction.label)
+        if rule_dets:
+            agreed = prediction.label in {d.category.value for d in rule_dets}
+            detection_notes.append(
+                f"Classifier hint: {label} ({prediction.confidence:.2f}) - "
+                + ("agrees with the rule result." if agreed else "differs from the rule result; the rules decide.")
+            )
+        else:
+            detection_notes.append(
+                f"No rule matched. The classifier suggested {label} ({prediction.confidence:.2f}) on a TF-IDF model; "
+                "treat it as a hint, not a diagnosis."
+            )
             rule_dets.append(
                 Detection(
                     category=FailureCategory(prediction.label),
                     severity=Severity.MODERATE,
                     confidence=round(0.4 + 0.4 * prediction.confidence, 2),
                     step_index=failed_index,
-                    title=f"Classifier suggests {FAILURE_LABELS.get(prediction.label, prediction.label)}",
+                    title=f"Classifier hint: {label}",
                     evidence=[
                         {
                             "step_index": failed_index,
@@ -274,7 +287,7 @@ def diagnose(trace: NormalizedTrace, use_llm: bool = True, capture_llm: bool = F
                             "quote": as_text(_signal_text(trace), 400),
                         }
                     ],
-                    notes=["Detected by the ML classifier, not by a deterministic rule."],
+                    notes=["No deterministic rule matched; the ML classifier's hint is the only signal here."],
                 )
             )
 
@@ -397,7 +410,12 @@ def diagnose(trace: NormalizedTrace, use_llm: bool = True, capture_llm: bool = F
     # A run that failed somewhere and still produced its result is not a plain
     # "success": the incident happened. It gets its own status so History and
     # Analytics agree.
-    if status_value == "success" and categories and _was_recovered(trace, failed_index):
+    # Recovery is claimed only on the narrow evidence in recoveries(): the same
+    # tool, called later, with the same arguments, succeeding. A different tool
+    # succeeding afterwards is the agent moving on, not a recovery, and stays a
+    # failure. A step that names no tool is recovered when the same step name
+    # succeeds later (recoveries() handles that too).
+    if status_value == "success" and categories and recoveries(trace):
         status_value = Status.RECOVERED.value
 
     root_cause_step = next((s.to_dict() for s in trace.steps if s.index == failed_index), None)
@@ -443,8 +461,11 @@ def diagnose(trace: NormalizedTrace, use_llm: bool = True, capture_llm: bool = F
         "recommendations": recs,
         "prevention": prevention,
         "timeline": _timeline(trace, failed_index),
-        # Concrete, trace-filled code for each fix. Rule-based and always
-        # available; an LLM may refine it later, but nothing depends on that.
+        # Concrete, trace-filled code for each fix. Always the deterministic
+        # template: the code a reader copies is the code this engine generated
+        # from the trace, never something a model wrote. LLM prose stays in the
+        # "why" fields (problem/fix/reason/benefit), where it is an explanation
+        # and not something anyone runs.
         "fixes": snippets_mod.fixes_for(
             recs,
             trace.to_dict(),
@@ -465,22 +486,6 @@ def diagnose(trace: NormalizedTrace, use_llm: bool = True, capture_llm: bool = F
             "agrees_with_primary": ml_agrees,
         },
     }
-
-
-def _was_recovered(trace: NormalizedTrace, failed_index: int | None) -> bool:
-    """True when the run hit a failure and then completed anyway.
-
-    Either the trace recorded a retry/recovery step after the failure, or a
-    step failed while the execution still ended successfully.
-    """
-    if failed_index is None:
-        return False
-    after = trace.steps[failed_index + 1 :]
-    if any(step.type is StepType.RETRY for step in after):
-        return True
-    return any(
-        step.status is Status.FAILED and step.type is not StepType.ERROR for step in trace.steps
-    )
 
 
 def _rule_root_cause(trace: NormalizedTrace, category: dict[str, Any], failed_index: int | None) -> str:
@@ -511,3 +516,99 @@ def _rule_impact(trace: NormalizedTrace, category: dict[str, Any]) -> str:
     if trace.status.value == "partial":
         return "Part of the task completed, so the result is incomplete and needs verification before use."
     return "The task did not complete, so the user received no usable result from this run."
+
+
+def _compatible_arguments(left: Any, right: Any) -> bool:
+    """Whether two tool calls asked for the same thing.
+
+    Missing arguments on either side are treated as compatible: the trace did
+    not record them, so they cannot rule a retry out. Recorded arguments must
+    match, compared as JSON so key order and nesting do not matter.
+    """
+    if left is None or right is None:
+        return True
+    try:
+        return json.dumps(left, sort_keys=True, default=str) == json.dumps(right, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        return str(left) == str(right)
+
+
+def _names_tool(text: str | None, tool_name: str) -> bool:
+    """Whether a step's name refers to this tool ("retry fetch_page (attempt 2)")."""
+    if not text or not tool_name:
+        return False
+    return re.search(rf"\b{re.escape(tool_name)}\b", text) is not None
+
+
+def recoveries(trace: NormalizedTrace) -> list[dict[str, Any]]:
+    """The failed steps that a later step of the same run made good.
+
+    "Made good" is narrow on purpose: a **later** step must call the **same
+    tool** (same tool name, compatible arguments) and succeed. A different tool
+    succeeding afterwards is the agent moving on, not a recovery, and a retry
+    that calls something else is a different call, not a second attempt.
+
+    A step that names no tool at all (an LLM call, a plan) is recovered when the
+    same *step name* succeeds later, or when a retry step follows it — a retry
+    is, by definition, the same work attempted again.
+    """
+    out: list[dict[str, Any]] = []
+    for position, step in enumerate(trace.steps):
+        if step.status is not Status.FAILED or step.type is StepType.ERROR:
+            continue
+        after = trace.steps[position + 1 :]
+        recovered_by = None
+        if step.tool_name:
+            recovered_by = next(
+                (
+                    later
+                    for later in after
+                    if later.status is Status.SUCCESS
+                    and later.tool_name == step.tool_name
+                    and _compatible_arguments(step.tool_arguments, later.tool_arguments)
+                ),
+                None,
+            )
+            if recovered_by is None:
+                # A retry step may carry the tool name in its text rather than
+                # its tool_name field: "retry fetch_page (attempt 2)". Same tool
+                # in the same run, so it counts — but only when the arguments do
+                # not disagree.
+                recovered_by = next(
+                    (
+                        later
+                        for later in after
+                        if later.status is Status.SUCCESS
+                        and later.type is StepType.RETRY
+                        and _names_tool(later.name, step.tool_name)
+                        and _compatible_arguments(step.tool_arguments, later.tool_arguments)
+                    ),
+                    None,
+                )
+        else:
+            # No tool name to match on: a retry after it, or a step with the
+            # same name, is the same work attempted again. A *different* step
+            # succeeding later is not.
+            recovered_by = next(
+                (
+                    later
+                    for later in after
+                    if later.status is Status.SUCCESS
+                    and (
+                        later.type is StepType.RETRY
+                        or (step.name and later.name == step.name)
+                    )
+                ),
+                None,
+            )
+        if recovered_by is None:
+            continue
+        out.append(
+            {
+                "step_index": step.index,
+                "step_name": step.name,
+                "recovered_by_index": recovered_by.index,
+                "error": as_text(step.error or "", 240),
+            }
+        )
+    return out

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     app_name: str = "Agent Autopsy"
     app_version: str = "0.5.0"
     environment: str = "development"
+    # Put back any missing sample run at startup. Off in tests, which build
+    # their own database and must not find demo rows in it.
+    seed_demos: bool = True
 
     # Database. SQLite by default; set DATABASE_URL=postgresql+psycopg://...
     # to move to PostgreSQL (the SQLAlchemy models are dialect agnostic).
