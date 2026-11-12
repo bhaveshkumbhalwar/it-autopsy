@@ -1,4 +1,4 @@
-# Phase 4 — Compare
+# Phase 4 — Compare : 
 
 Two or three runs, their steps lined up by number, and one sentence saying why
 they behaved differently.
