@@ -542,10 +542,10 @@ function FixBlock({ fix }: { fix: RecommendedFix }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-            <p className="text-[12.5px] font-semibold text-app">{fix.title}</p>
+            <p className="text-[12.5px] font-semibold text-app">{fix.caption || fix.title}</p>
             {fix.priority && <Badge tone={PRIORITY_TONE[fix.priority] ?? 'neutral'}>{fix.priority}</Badge>}
           </div>
-          {fix.why && <p className="mt-0.5 text-[11.5px] text-muted-app">{fix.why}</p>}
+          {fix.why && <p className="mt-0.5 text-[11.5px] break-words text-muted-app">{fix.why}</p>}
           {fix.applies_to.length > 0 && (
             <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-app">
               <Wrench className="h-3 w-3" />
@@ -563,7 +563,9 @@ function FixBlock({ fix }: { fix: RecommendedFix }) {
           {copied ? 'Copied' : 'Copy'}
         </Button>
       </div>
-      <p className="px-2.5 pt-2 text-[11px] font-medium text-muted-app">{fix.caption}</p>
+      <p className="px-2.5 pt-2 text-[11px] font-medium text-muted-app">
+        {fix.id ? `Template: ${fix.id}` : 'Suggested fix'}
+      </p>
       <pre className="m-2.5 mt-1 max-h-[360px] overflow-auto rounded-md bg-[var(--surface-muted)] p-2.5 font-mono text-[11px] leading-5 text-app">
         <code>{fix.snippet.code}</code>
       </pre>

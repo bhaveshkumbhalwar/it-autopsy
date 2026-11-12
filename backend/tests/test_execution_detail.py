@@ -109,7 +109,7 @@ def test_step_kinds_are_parsed_and_never_show_an_unknown_tag():
 
 
 def test_timeline_evidence_is_attached_to_its_own_step():
-    trace, analysis = _diagnose(_trace(get_demo("tool-timeout")["text"] and json.loads(get_demo("tool-timeout")["text"])))
+    trace, analysis = _diagnose(json.loads(get_demo("tool-timeout")["text"]))
     timeline = build_timeline(trace, analysis)
     failing = next(item for item in timeline["items"] if item["is_root_cause"])
     assert failing["evidence"], "the failing step must carry the evidence that convicted it"
@@ -151,10 +151,11 @@ def test_timeline_survives_an_analysis_with_no_evidence():
 
 def test_facts_are_read_from_the_failing_step():
     trace, analysis = _diagnose(json.loads(get_demo("tool-timeout")["text"]))
-    facts = extract_facts(trace, analysis)
-    assert facts["tool"] == "fetch_page"
-    assert facts["timeout"] == 30
-    assert facts["step"] == analysis["failed_step_index"]
+    facts = extract_facts(trace, analysis["failed_step_index"], [c["category"] for c in analysis["categories"]])
+    assert facts["tool_name"] == "fetch_page"
+    assert facts["timeout_seconds"] == 30
+    assert facts["suggested_timeout_seconds"] == 60
+    assert facts["step_number"] == analysis["failed_step_index"] + 1
 
 
 def test_every_demo_gets_at_least_one_concrete_fix_without_an_llm():
@@ -174,7 +175,7 @@ def test_timeout_fix_uses_the_real_tool_name_and_a_longer_timeout():
     fix = analysis["fixes"][0]
     code = fix["snippet"]["code"]
     assert "fetch_page" in code
-    assert "timeout=60" in code  # 30s observed -> 60s suggested
+    assert "60.0" in code  # 30s observed -> a 60s read timeout
     assert fix["applies_to"]
 
 
@@ -189,8 +190,11 @@ def test_rate_limit_fix_honours_the_retry_after_header():
 
 def test_infinite_loop_fix_names_the_repeated_tool():
     trace, analysis = _diagnose(json.loads(get_demo("infinite-loop")["text"]))
-    code = " ".join(fix["snippet"]["code"] for fix in analysis["fixes"])
-    assert "http_get" in code
+    # The loop fix is about the run loop; the repeated tool is named in the
+    # fix's "applies to" line rather than forced into code that is generic.
+    labels = " ".join(part for fix in analysis["fixes"] for part in fix["applies_to"])
+    assert "http_get" in labels
+    assert any("MAX_ITERATIONS" in fix["snippet"]["code"] for fix in analysis["fixes"])
 
 
 def test_fixes_are_redacted_before_they_are_returned():

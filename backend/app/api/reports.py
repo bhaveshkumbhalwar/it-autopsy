@@ -63,6 +63,7 @@ def report_json(analysis_id: int, request: Request, db: Session = Depends(get_se
         "recoverable": analysis.recoverable,
         "confidence": analysis.confidence,
         "recommendations": analysis.recommendations,
+        "fixes": analysis.fixes or [],
         "prevention": analysis.prevention,
         "timeline": analysis.timeline,
         "llm_used": analysis.llm_used,
