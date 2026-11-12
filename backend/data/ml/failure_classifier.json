@@ -1,0 +1,212 @@
+{
+  "version": "1.0.0",
+  "metrics": {
+    "model": "TF-IDF (word 1-2 + char 3-5) + calibrated LinearSVC",
+    "dataset": {
+      "examples": 100,
+      "classes": 10,
+      "source": "synthetic labeled corpus (app/ml/corpus.py)"
+    },
+    "holdout": {
+      "test_size": 0.3,
+      "samples": 30,
+      "accuracy": 0.5667,
+      "macro_f1": 0.5233,
+      "weighted_f1": 0.5233,
+      "per_class": {
+        "api_failure": {
+          "precision": 0.5,
+          "recall": 0.667,
+          "f1-score": 0.571
+        },
+        "hallucination": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0
+        },
+        "incorrect_output": {
+          "precision": 0.5,
+          "recall": 0.333,
+          "f1-score": 0.4
+        },
+        "infinite_loop": {
+          "precision": 1.0,
+          "recall": 0.333,
+          "f1-score": 0.5
+        },
+        "memory_context_failure": {
+          "precision": 0.667,
+          "recall": 0.667,
+          "f1-score": 0.667
+        },
+        "planning_failure": {
+          "precision": 0.5,
+          "recall": 0.667,
+          "f1-score": 0.571
+        },
+        "reasoning_failure": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0
+        },
+        "safety_policy_violation": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0
+        },
+        "timeout_failure": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1-score": 0.667
+        },
+        "tool_execution_failure": {
+          "precision": 0.75,
+          "recall": 1.0,
+          "f1-score": 0.857
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "api_failure",
+          "hallucination",
+          "incorrect_output",
+          "infinite_loop",
+          "memory_context_failure",
+          "planning_failure",
+          "reasoning_failure",
+          "safety_policy_violation",
+          "timeout_failure",
+          "tool_execution_failure"
+        ],
+        "matrix": [
+          [
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3
+          ]
+        ]
+      }
+    },
+    "cross_validation": {
+      "folds": 5,
+      "accuracy": 0.64,
+      "macro_f1": 0.5978
+    },
+    "caveat": "Metrics come from a small synthetic corpus; treat them as a sanity check, not a production guarantee."
+  }
+}

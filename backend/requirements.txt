@@ -1,0 +1,15 @@
+fastapi==0.162.4
+uvicorn[standard]==0.54.0
+SQLAlchemy==2.1.8
+pydantic==2.14.3
+pydantic-settings==2.16.2
+python-multipart==0.0.33
+httpx==0.28.1
+groq>=1.7.0
+scikit-learn==1.9.1
+numpy==2.5.4
+joblib==1.6.0
+reportlab==5.1.0
+pytest==9.2.0
+# PostgreSQL (optional): uncomment and set DATABASE_URL=postgresql+psycopg://...
+# psycopg[binary]==3.2.3

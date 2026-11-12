@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Local environment (may contain provider keys — never commit)
+.env
+backend/.env
+frontend/.env
+
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Migration backups: these hold PRE-migration data (including rows that were
+# merged away or not yet redacted). Delete them once the migration is verified.
+# (the directory name, at any depth)
+backups/
+*.backup-*.db
