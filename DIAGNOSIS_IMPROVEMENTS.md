@@ -1,4 +1,4 @@
-# Diagnosis quality — what changed and why
+# Diagnosis quality : what changed and why
 
 Engine version **1.1**. Scope: the diagnosis pipeline only (rules → causal
 analysis → ML → LLM → recommendations → confidence/severity). The API surface and
