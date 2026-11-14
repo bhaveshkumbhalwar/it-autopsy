@@ -9,7 +9,7 @@ step-by-step comparison view.
 **Rules are authoritative, the classifier is a hint, the LLM layer is optional.**
 Nothing in the analysis path executes the uploaded code or commands: traces are
 parsed as data only. Secrets and PII are redacted before storage and again at the
-API boundary.
+API boundary
 
 ---
 
