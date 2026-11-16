@@ -71,7 +71,7 @@ The session stops, and says why, when:
 | GET | `/api/agent/executions/{pk}` | The whole session: attempts, decisions, events. |
 | POST | `/api/agent/executions/{pk}/start` | Observe → analyze → decide → propose the next plan. |
 | GET | `/api/agent/remediations/{id}` | One attempt with its plan, action result and verification. |
-| POST | `/api/agent/remediations/{id}/approve` | Approve (`approved: true`) or reject (`false`). Rejection stops the session. |
+| POST | `/api/agent/remediations/{id}/approve` | Approve (`approved: true`) or reject (`false`). Add `execute_if_ready: true` to approve **and** run in one call (never runs a recommendation-only plan). Rejection stops the session. |
 | POST | `/api/agent/remediations/{id}/execute` | Run an automatic or approved action; anything else is refused with a code. |
 | POST | `/api/agent/remediations/{id}/verify` | Submit a follow-up trace, get the graded verdict and the next attempt. |
 | GET | `/api/agent/verification-statuses` | What each verdict means, for the UI. |
@@ -106,7 +106,7 @@ migration runner.
 
 ## Tests
 
-`backend/tests/test_agent_loop.py` (21 tests): a failing trace yields a decision
+`backend/tests/test_agent_loop.py` (25 tests): a failing trace yields a decision
 with evidence; a plan carries every required field; automatic actions execute and
 are recorded; an approval action is refused until approved; rejection stops the
 session; successful verification marks the run `recovered` with its resolution;
@@ -117,8 +117,26 @@ six phases; the allowlist refuses unknown and recommendation-only actions; a
 credential failure is never a retry; verification refuses to call an unreached
 step resolved; secrets in a follow-up trace are redacted.
 
-Full suite: **360 passed** (`cd backend && .venv/bin/python -m pytest tests -q`).
+Full suite: **364 passed** (`cd backend && .venv/bin/python -m pytest tests -q`).
 Frontend: `npx tsc --noEmit && npm run build` clean.
+
+## The Approve button
+
+Three states, and the panel offers only what the backend will honour:
+
+* **Approve & run** (one click) — for a plan the allowlist lets a human execute
+  (automatic, or an already-approvable action). The approve endpoint takes
+  `execute_if_ready: true`, records the approval and runs the action in the same
+  request; the response says `executed: true/false`.
+* **Approve** — for a recommendation-only plan, or when you want the decision
+  recorded before the action runs. Approving never silently executes anything.
+* **Reject** — stops the session, as before.
+
+Fixes behind it: approving an approval-gated plan used to reset its status to
+`proposed`, which erased the gate and left Run disabled forever. Approval now
+changes *who may proceed*, not *what the plan is*: an approval action stays
+`awaiting_approval` until it runs, an automatic one stays `proposed`, and a
+refused attempt stays open so it can be approved and run.
 
 ## Limits (stated, not hidden)
 

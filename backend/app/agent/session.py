@@ -43,6 +43,8 @@ logger = logging.getLogger("agent_autopsy.agent.session")
 # Terminal states for one remediation turn.
 PROPOSED = "proposed"
 AWAITING_APPROVAL = "awaiting_approval"
+# The action category that cannot run until a human approves it.
+APPROVAL_TYPE = "approval"
 REJECTED = "rejected"
 EXECUTED = "executed"
 EXECUTION_FAILED = "execution_failed"
@@ -353,7 +355,14 @@ def approve(
     by: str | None = None,
     note: str | None = None,
 ) -> Remediation:
-    """Record a human's decision about a plan. Refuses anything not waiting."""
+    """Record a human's decision about a plan. Refuses anything not waiting.
+
+    Approval changes *who may proceed*, not *what the plan is*: an automatic
+    action stays ``proposed`` and a human-approval action stays
+    ``awaiting_approval`` until it is run. Marking it ``proposed`` regardless
+    used to lose the approval state for the one case that needs it, so the Run
+    button never enabled.
+    """
     # A refused attempt (an approval action tried before it was approved) leaves
     # the plan open: the operator can approve it and then run it.
     if remediation.status not in {PROPOSED, AWAITING_APPROVAL, ACTION_REFUSED}:
@@ -362,7 +371,12 @@ def approve(
     remediation.approved_by = (by or "operator")[:120]
     remediation.approval_note = note
     remediation.approved_at = _now()
-    remediation.status = PROPOSED if approved else REJECTED
+    if not approved:
+        remediation.status = REJECTED
+    elif remediation.action_type == APPROVAL_TYPE:
+        remediation.status = AWAITING_APPROVAL
+    else:
+        remediation.status = PROPOSED
     _event(
         db,
         remediation.execution_pk,

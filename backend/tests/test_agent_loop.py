@@ -541,3 +541,109 @@ def test_secrets_in_a_followup_trace_are_not_returned(client):
     )
     assert response.status_code == 200, response.text
     assert secret not in response.text
+
+
+# --------------------------------------------------------------------------- #
+# the Approve button: approval state survives, and "approve and run" works
+# --------------------------------------------------------------------------- #
+
+def test_approval_gated_plan_keeps_its_approval_state(client):
+    """An approved approval-action stays 'awaiting_approval' so it can then be run."""
+    from app.db.database import Remediation, session_scope
+
+    pk = _ingest(client, _trace("agent-016", step_error=TIMEOUT_ERROR))
+    _start(client, pk)
+    with session_scope() as db:
+        row = Remediation(
+            execution_pk=pk,
+            attempt=2,
+            decision={},
+            action_id="reanalyze-with-llm",
+            action_type="approval",
+            risk="low",
+            status="awaiting_approval",
+            requires_approval=True,
+            plan={"action_id": "reanalyze-with-llm", "title": "LLM re-analysis", "action_type": "approval", "risk": "low", "executable": True},
+        )
+        db.add(row)
+        db.commit()
+        remediation_id = row.id
+
+    body = client.post(
+        f"/api/agent/remediations/{remediation_id}/approve", json={"approved": True, "by": "tester"}
+    ).json()
+    assert body["remediation"]["approved"] is True
+    assert body["remediation"]["status"] == "awaiting_approval", "approval must not clear the gate marker"
+    assert body["executed"] is False
+
+    run = client.post(f"/api/agent/remediations/{remediation_id}/execute")
+    assert run.status_code == 200, run.text
+    assert run.json()["remediation"]["status"] in {"executed", "execution_failed"}
+
+
+def test_approve_and_run_executes_in_one_call(client):
+    """One click does both: the action runs, and the response says so."""
+    from app.db.database import Remediation, session_scope
+
+    pk = _ingest(client, _trace("agent-017", step_error=TIMEOUT_ERROR))
+    _start(client, pk)
+    with session_scope() as db:
+        row = Remediation(
+            execution_pk=pk,
+            attempt=2,
+            decision={},
+            action_id="reanalyze-rules",
+            action_type="automatic",
+            risk="low",
+            status="proposed",
+            requires_approval=False,
+            plan={
+                "action_id": "reanalyze-rules",
+                "title": "Re-run the diagnosis",
+                "action_type": "automatic",
+                "risk": "low",
+                "executable": True,
+            },
+        )
+        db.add(row)
+        db.commit()
+        remediation_id = row.id
+
+    body = client.post(
+        f"/api/agent/remediations/{remediation_id}/approve",
+        json={"approved": True, "execute_if_ready": True},
+    ).json()
+    assert body["executed"] is True
+    assert body["remediation"]["approved"] is True
+    assert body["remediation"]["status"] == "executed"
+    assert body["remediation"]["executed_at"]
+    assert any(e["phase"] == "act" for e in body["session"]["events"])
+
+
+def test_approve_and_run_never_runs_a_recommendation(client):
+    """A recommendation-only plan is approved and recorded, never executed."""
+    pk = _ingest(client, _trace("agent-018", step_error=AUTH_ERROR))
+    session = _start(client, pk)
+    remediation_id = session["remediations"][0]["id"]
+    assert session["remediations"][0]["action_type"] == "recommendation"
+
+    body = client.post(
+        f"/api/agent/remediations/{remediation_id}/approve",
+        json={"approved": True, "execute_if_ready": True},
+    ).json()
+    assert body["executed"] is False
+    assert body["remediation"]["approved"] is True
+    assert body["remediation"]["status"] == "proposed"
+    assert body["remediation"]["executed_at"] is None
+    assert not any(e["phase"] == "act" for e in body["session"]["events"])
+
+
+def test_rejecting_from_the_approve_endpoint_still_stops(client):
+    pk = _ingest(client, _trace("agent-019", step_error=TIMEOUT_ERROR))
+    remediation_id = _start(client, pk)["remediations"][0]["id"]
+    body = client.post(
+        f"/api/agent/remediations/{remediation_id}/approve",
+        json={"approved": False, "execute_if_ready": True},
+    ).json()
+    assert body["remediation"]["status"] == "rejected"
+    assert body["executed"] is False

@@ -41,6 +41,9 @@ class ApprovalRequest(BaseModel):
     approved: bool
     by: str | None = Field(default=None, max_length=120)
     note: str | None = Field(default=None, max_length=2000)
+    # Approve and, when the action may run without a human, run it right away.
+    # One deliberate click instead of two for the same decision.
+    execute_if_ready: bool = False
 
 
 class VerificationRequest(BaseModel):
@@ -153,11 +156,19 @@ def approve_remediation(
         agent_session.approve(
             db, remediation, approved=payload.approved, by=payload.by, note=payload.note
         )
+        executed = False
+        # "Approve and run": only for a plan a human may execute at all. A
+        # recommendation-only action is approved (recorded) and stops there,
+        # and a failed result is reported rather than hidden.
+        if payload.approved and payload.execute_if_ready and (remediation.plan or {}).get("executable"):
+            agent_session.execute(db, remediation)
+            executed = True
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return sanitize(
         {
             "remediation": remediation_to_dict(remediation),
+            "executed": executed,
             "session": _session_payload(db, remediation.execution_pk),
         }
     )

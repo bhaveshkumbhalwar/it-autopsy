@@ -73,7 +73,7 @@ const PHASE_ORDER = ['observe', 'analyze', 'decide', 'act', 'verify', 'learn']
 
 export type AgentCallbacks = {
   onStart: () => Promise<void>
-  onApprove: (id: number, approved: boolean) => Promise<void>
+  onApprove: (id: number, approved: boolean, executeIfReady?: boolean) => Promise<void>
   onExecute: (id: number) => Promise<void>
   onVerify: (id: number, trace: string) => Promise<void>
 }
@@ -320,9 +320,23 @@ function RemediationCard({
     }
   }
 
-  const canApprove = isCurrent && (remediation.status === 'proposed' || remediation.status === 'awaiting_approval' || remediation.status === 'action_refused')
-  const canExecute = canApprove && !plan.repeat_of_failed_action && plan.action_type !== 'recommendation'
-  const needsApproval = plan.action_type === 'approval' && remediation.approved !== true
+  // A plan can be acted on while it is open. `proposed` is the normal state; an
+  // approval-gated plan stays `awaiting_approval` until it is approved, and a
+  // refused attempt leaves the plan open so it can be approved then run.
+  const canApprove =
+    isCurrent &&
+    (remediation.status === 'proposed' ||
+      remediation.status === 'awaiting_approval' ||
+      remediation.status === 'action_refused')
+  const isRecommendation = plan.action_type === 'recommendation'
+  const approved = remediation.approved === true
+  const needsApproval = plan.action_type === 'approval' && !approved
+  // Run is offered only where the backend will actually run something.
+  const canExecute =
+    canApprove && !isRecommendation && !plan.repeat_of_failed_action && remediation.status !== 'executed'
+  // One click for the whole decision: approve + run in the same request, for
+  // plans the action allowlist lets a human execute.
+  const canApproveAndRun = canApprove && !isRecommendation && !plan.repeat_of_failed_action && !approved
 
   return (
     <Card className="h-full p-4">
@@ -368,14 +382,26 @@ function RemediationCard({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {canApprove && (
             <>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={busy === 'approve'}
-                onClick={() => run('approve', () => callbacks.onApprove(remediation.id, true))}
-              >
-                <ThumbsUp className="h-3.5 w-3.5" /> Approve
-              </Button>
+              {canApproveAndRun ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={busy === 'approve'}
+                  title="Approve this plan and run the action in one step."
+                  onClick={() => run('approve', () => callbacks.onApprove(remediation.id, true, true))}
+                >
+                  <ThumbsUp className="h-3.5 w-3.5" /> Approve &amp; run
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={busy === 'approve'}
+                  onClick={() => run('approve', () => callbacks.onApprove(remediation.id, true))}
+                >
+                  <ThumbsUp className="h-3.5 w-3.5" /> {approved ? 'Approved' : 'Approve'}
+                </Button>
+              )}
               <Button
                 size="sm"
                 loading={busy === 'reject'}
@@ -395,6 +421,11 @@ function RemediationCard({
             >
               <Play className="h-3.5 w-3.5" /> {needsApproval ? 'Approve to run' : 'Run action'}
             </Button>
+          )}
+          {isRecommendation && canApprove && (
+            <span className="text-[10.5px] text-muted-app">
+              Recommendation only: approving records the decision, then submit a follow-up trace to verify.
+            </span>
           )}
           <Button size="sm" variant="ghost" onClick={() => setShowVerifier((v) => !v)}>
             <CheckCircle2 className="h-3.5 w-3.5" /> Submit verification trace

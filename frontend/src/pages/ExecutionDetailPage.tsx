@@ -113,8 +113,8 @@ export default function ExecutionDetailPage() {
     setAgent(res)
     await reload()
   }
-  const agentApprove = async (remediationId: number, approved: boolean) => {
-    const res = await api.agentApprove(remediationId, approved)
+  const agentApprove = async (remediationId: number, approved: boolean, executeIfReady = false) => {
+    const res = await api.agentApprove(remediationId, approved, undefined, executeIfReady)
     setAgent(res.session)
     await reload()
   }

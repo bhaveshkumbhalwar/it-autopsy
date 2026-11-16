@@ -520,11 +520,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({}),
     }),
-  agentApprove: (remediationId: number, approved: boolean, note?: string) =>
-    request<{ remediation: AgentRemediation; session: AgentSession }>(`/agent/remediations/${remediationId}/approve`, {
-      method: 'POST',
-      body: JSON.stringify({ approved, note }),
-    }),
+  agentApprove: (remediationId: number, approved: boolean, note?: string, executeIfReady = false) =>
+    request<{ remediation: AgentRemediation; executed: boolean; session: AgentSession }>(
+      `/agent/remediations/${remediationId}/approve`,
+      { method: 'POST', body: JSON.stringify({ approved, note, execute_if_ready: executeIfReady }) },
+    ),
   agentExecute: (remediationId: number) =>
     request<{ remediation: AgentRemediation; session: AgentSession }>(`/agent/remediations/${remediationId}/execute`, {
       method: 'POST',
