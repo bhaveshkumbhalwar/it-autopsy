@@ -270,7 +270,127 @@ export type ExecutionSummary = {
   latest_analysis?: Partial<Analysis>
 }
 
-export type ExecutionDetail = ExecutionSummary & { trace: Record<string, unknown> }
+export type ExecutionDetail = ExecutionSummary & {
+  trace: Record<string, unknown>
+  resolution?: { remediation_id?: number; action_id?: string; verified_at?: string; lesson?: string } | Record<string, never>
+}
+
+/* ---------------------------------------------------------------- the agent */
+
+export type VerificationStatus =
+  | 'VERIFIED_RESOLVED'
+  | 'PARTIALLY_RESOLVED'
+  | 'STILL_FAILING'
+  | 'NEW_FAILURE'
+  | 'INCONCLUSIVE'
+
+export type AgentDecision = {
+  verdict: 'diagnosed' | 'insufficient_evidence' | 'no_action_needed'
+  failure_category: string | null
+  root_cause: string | null
+  root_cause_step: number | null
+  evidence: { step_index: number | null; field: string | null; quote: string | null; source?: string | null }[]
+  confidence: number
+  confidence_kind: string
+  severity: Severity | null
+  recoverable: string | null
+  retry_appropriate: boolean
+  retry_reason: string
+  action_id: string
+  action_reason: string
+  uncertainty: string[]
+  needed_evidence: string | null
+  ml?: { prediction: string | null; confidence: number | null; hint_only?: boolean; agrees?: boolean | null }
+}
+
+export type RemediationPlan = {
+  action_id: string
+  title: string
+  action_type: 'automatic' | 'approval' | 'recommendation'
+  risk: 'low' | 'medium' | 'high'
+  problem: string | null
+  root_cause: string | null
+  root_cause_step: number | null
+  proposed_solution: string
+  why_selected: string
+  expected_outcome: string
+  verification_criteria: string
+  requires_approval: boolean
+  instructions: string[]
+  attempt: number
+  repeat_of_failed_action: boolean
+  executable: boolean
+}
+
+export type AgentRemediation = {
+  id: number
+  execution_pk: number
+  analysis_id: number | null
+  attempt: number
+  action_id: string
+  action_type: 'automatic' | 'approval' | 'recommendation'
+  risk: 'low' | 'medium' | 'high'
+  status:
+    | 'proposed'
+    | 'awaiting_approval'
+    | 'rejected'
+    | 'executed'
+    | 'execution_failed'
+    | 'action_refused'
+    | 'verified'
+    | 'not_verified'
+  title: string | null
+  requires_approval: boolean
+  approved: boolean | null
+  approved_by: string | null
+  approved_at: string | null
+  executed_at: string | null
+  verification_status: VerificationStatus | null
+  verification_mode: 'simulated' | 'real' | null
+  verified_at: string | null
+  verification_execution_pk: number | null
+  created_at: string | null
+  decision: AgentDecision
+  plan: RemediationPlan
+  execution_result: { status?: string; code?: string; detail?: string; output?: Record<string, unknown> }
+  verification: {
+    status?: VerificationStatus
+    mode?: 'simulated' | 'real'
+    resolved?: boolean
+    checks?: { name: string; passed: boolean; detail: string }[]
+    reasons?: string[]
+    criteria?: string
+    note?: string
+    evidence?: {
+      original?: { execution_id: string; status: string; step_count: number; failed_step: { number: number | null; tool_name: string | null; error: string | null } | null }
+      followup?: { execution_id: string; status: string; step_count: number; failed_step: { number: number | null; tool_name: string | null; error: string | null } | null }
+    }
+  }
+  approval_note: string | null
+}
+
+export type AgentEvent = {
+  id: number
+  execution_pk: number
+  remediation_id: number | null
+  phase: 'observe' | 'analyze' | 'decide' | 'act' | 'verify' | 'learn'
+  kind: string
+  summary: string
+  detail: Record<string, unknown>
+  created_at: string | null
+}
+
+export type AgentSession = {
+  execution_pk: number
+  attempts_used: number
+  attempt_limit: number
+  attempts_left: number
+  resolved: boolean
+  state: 'not_started' | 'in_progress' | 'awaiting_approval' | 'resolved' | 'exhausted'
+  stop_reason: string | null
+  remediations: AgentRemediation[]
+  events: AgentEvent[]
+}
 
 export type IngestResult = {
   execution: ExecutionDetail
@@ -388,9 +508,37 @@ export const api = {
     return request<{ items: ExecutionSummary[]; total: number }>(`/executions?${search.toString()}`)
   },
   execution: (id: number) =>
-    request<{ execution: ExecutionDetail; analyses: Analysis[]; timeline: MergedTimeline; observations: Observation[] }>(
-      `/executions/${id}`,
-    ),
+    request<{
+      execution: ExecutionDetail
+      analyses: Analysis[]
+      timeline: MergedTimeline
+      observations: Observation[]
+      agent?: AgentSession
+    }>(`/executions/${id}`),
+  agentStart: (id: number) =>
+    request<AgentSession & { started: boolean; reason?: string | null }>(`/agent/executions/${id}/start`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  agentApprove: (remediationId: number, approved: boolean, note?: string) =>
+    request<{ remediation: AgentRemediation; session: AgentSession }>(`/agent/remediations/${remediationId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ approved, note }),
+    }),
+  agentExecute: (remediationId: number) =>
+    request<{ remediation: AgentRemediation; session: AgentSession }>(`/agent/remediations/${remediationId}/execute`, {
+      method: 'POST',
+    }),
+  agentVerify: (remediationId: number, trace: string) =>
+    request<{
+      verification: AgentRemediation['verification']
+      followup_execution_pk: number
+      remediation: AgentRemediation
+      session: AgentSession
+    }>(`/agent/remediations/${remediationId}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ trace }),
+    }),
   deleteExecution: (id: number) => request<{ deleted: number }>(`/executions/${id}`, { method: 'DELETE' }),
   reanalyze: (id: number, use_llm: boolean) =>
     request<{ analysis: Analysis }>(`/executions/${id}/analyze`, { method: 'POST', body: JSON.stringify({ use_llm }) }),

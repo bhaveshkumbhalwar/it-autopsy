@@ -22,6 +22,7 @@ import {
 import clsx from 'clsx'
 import { api, describeApiError } from '../lib/api'
 import type {
+  AgentSession,
   Analysis,
   ExecutionDetail,
   MergedTimeline,
@@ -31,6 +32,7 @@ import type {
   TimelineEvidence,
 } from '../lib/api'
 import { Badge, Button, Card, EmptyState, ErrorState, SectionTitle, Skeleton } from '../components/ui'
+import { AgentPanel } from '../components/AgentPanel'
 import {
   categoryLabel,
   formatDateTime,
@@ -64,6 +66,7 @@ export default function ExecutionDetailPage() {
   const [analyses, setAnalyses] = useState<Analysis[]>([])
   const [timeline, setTimeline] = useState<MergedTimeline | null>(null)
   const [observations, setObservations] = useState<Observation[]>([])
+  const [agent, setAgent] = useState<AgentSession | null>(null)
   const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -74,11 +77,13 @@ export default function ExecutionDetailPage() {
     analyses: Analysis[]
     timeline: MergedTimeline
     observations?: Observation[]
+    agent?: AgentSession
   }) => {
     setExecution(res.execution)
     setAnalyses(res.analyses)
     setTimeline(res.timeline)
     setObservations(res.observations ?? [])
+    setAgent(res.agent ?? null)
     setSelected(0)
   }
 
@@ -94,6 +99,35 @@ export default function ExecutionDetailPage() {
   }
 
   useEffect(load, [id])
+
+  // The agent's loop: every call goes to the real endpoints and the returned
+  // session replaces what the panel shows, so a refused or failed step is
+  // visible instead of silently ignored.
+  const reload = async () => {
+    if (!id) return
+    apply(await api.execution(Number(id)))
+  }
+  const agentStart = async () => {
+    if (!id) return
+    const res = await api.agentStart(Number(id))
+    setAgent(res)
+    await reload()
+  }
+  const agentApprove = async (remediationId: number, approved: boolean) => {
+    const res = await api.agentApprove(remediationId, approved)
+    setAgent(res.session)
+    await reload()
+  }
+  const agentExecute = async (remediationId: number) => {
+    const res = await api.agentExecute(remediationId)
+    setAgent(res.session)
+    await reload()
+  }
+  const agentVerify = async (remediationId: number, trace: string) => {
+    const res = await api.agentVerify(remediationId, trace)
+    setAgent(res.session)
+    await reload()
+  }
 
   const reanalyze = async () => {
     if (!id) return
@@ -181,6 +215,34 @@ export default function ExecutionDetailPage() {
           </div>
         )}
       </div>
+
+      {/* The semi-autonomous loop: decision, plan, approval, action, verification. */}
+      {agent !== null ? (
+        <AgentPanel
+          session={agent}
+          callbacks={{
+            onStart: agentStart,
+            onApprove: agentApprove,
+            onExecute: agentExecute,
+            onVerify: agentVerify,
+          }}
+        />
+      ) : (
+        execution.status !== 'success' && (
+          <Card className="p-4">
+            <h2 className="text-[15px] font-semibold text-app">Diagnostic agent</h2>
+            <p className="mt-1 max-w-[70ch] text-[12px] text-muted-app">
+              Observe → analyze → decide → act → verify. The agent proposes a fix from a fixed allowlist, runs it when
+              it is allowed to, and verifies the outcome against a follow-up trace.
+            </p>
+            <div className="mt-2">
+              <Button variant="primary" onClick={() => agentStart().catch(() => undefined)}>
+                Start diagnosing
+              </Button>
+            </div>
+          </Card>
+        )
+      )}
 
       <HowDiagnosed analysis={analysis} />
 

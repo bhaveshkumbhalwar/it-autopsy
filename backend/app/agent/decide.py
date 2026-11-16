@@ -23,6 +23,10 @@ from app.core.models import FailureCategory as F
 # reports uncertainty and asks for a better trace instead of inventing a cause.
 MIN_ACTIONABLE_CONFIDENCE = 0.3
 
+# Evidence that only restates a step's status. It says a step failed, not why.
+# Evidence sourced from the ML classifier is a hint, never a finding.
+_STATUS_WORDS = {"failed", "failure", "error", "true", "false", "unknown"}
+
 # Categories where retrying is the wrong move, whatever the status says.
 NO_RETRY_CATEGORIES = {
     F.SAFETY.value,
@@ -52,10 +56,21 @@ def assess_evidence(observation: dict[str, Any]) -> dict[str, Any]:
     signals = observation.get("signals") or {}
     reasons: list[str] = []
 
-    # A quoted evidence row is what makes a category a finding: a category with
-    # no quote is the classifier's hint, and a bare step status is not evidence.
-    has_quote = any((row.get("quote") or "").strip() for row in engine.get("evidence") or [])
-    has_category = bool(engine.get("categories")) and has_quote
+    # A quoted *error* is what makes a category a finding. A category with no
+    # quote is the classifier's hint; a quote that merely repeats a step status
+    # ("failed") is structure, not a cause. Both are reported as insufficient
+    # evidence rather than dressed up as a diagnosis.
+    evidence_rows = engine.get("evidence") or []
+    quotes = [(row.get("quote") or "").strip() for row in evidence_rows]
+    has_quote = any(q and q.lower() not in _STATUS_WORDS for q in quotes)
+    # Only a rule's finding decides; the classifier's hint is context.
+    rule_quote = any(
+        (row.get("quote") or "").strip()
+        and (row.get("quote") or "").strip().lower() not in _STATUS_WORDS
+        and row.get("source") != "ml"
+        for row in evidence_rows
+    )
+    has_category = bool(engine.get("rule_categories") or engine.get("categories")) and rule_quote
     confidence = engine.get("confidence") if isinstance(engine.get("confidence"), (int, float)) else 0.0
 
     if not has_category:

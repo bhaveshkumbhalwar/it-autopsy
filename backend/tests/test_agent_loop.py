@@ -24,7 +24,7 @@ from app.api import deps as api_deps
 # fixtures
 # --------------------------------------------------------------------------- #
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def client(tmp_path_factory):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -44,8 +44,6 @@ def client(tmp_path_factory):
     app_settings.rate_limit_analyze = 100_000
     app_settings.agent_max_attempts = 3
     api_deps._BUCKETS.clear()
-    # One bucket for the whole module: a fresh client per test is not needed
-    # and the ceiling above is what the assertions rely on.
 
     from app.main import app
 

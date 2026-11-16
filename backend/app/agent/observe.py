@@ -101,6 +101,15 @@ def observe(trace: NormalizedTrace, analysis: dict[str, Any] | None = None) -> d
             "status": analysis.get("status"),
             "primary_category": analysis.get("primary_category"),
             "categories": categories,
+            # Rules decide; the classifier's hint is listed separately so a
+            # decision never rests on it.
+            "rule_categories": [
+                c.get("category")
+                for c in analysis.get("categories") or []
+                if c.get("category") and (c.get("source") in {None, "rule"} or c.get("is_primary", True))
+                and c.get("category") in categories
+            ],
+            "ml_hint_category": (analysis.get("ml") or {}).get("prediction"),
             "root_cause": analysis.get("root_cause"),
             "failed_step_index": analysis.get("failed_step_index"),
             "confidence": analysis.get("confidence"),
@@ -112,6 +121,7 @@ def observe(trace: NormalizedTrace, analysis: dict[str, Any] | None = None) -> d
                     "field": row.get("field"),
                     "quote": _quote(row.get("quote")),
                     "source": row.get("source"),
+                    "role": row.get("role"),
                 }
                 for row in (analysis.get("evidence") or [])[:6]
             ],

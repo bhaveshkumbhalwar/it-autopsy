@@ -256,6 +256,17 @@ RETRYABLE = {
 # Plans
 # --------------------------------------------------------------------------- #
 
+def alternatives_for(category: str | None, exclude: list[str]) -> list[str]:
+    """Actions that address the same failure family, minus the ones already tried."""
+    out: list[str] = []
+    for action_id, action in CATALOGUE.items():
+        if action_id in exclude or action_id == "collect-better-trace":
+            continue
+        if category and category in action["categories"]:
+            out.append(action_id)
+    return out
+
+
 def build_plan(
     action_id: str,
     decision: dict[str, Any],

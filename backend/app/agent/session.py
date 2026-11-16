@@ -76,6 +76,16 @@ def _key(value: Any) -> int:
     return int(getattr(value, "id", value))
 
 
+def _row_id(row: Any) -> int:
+    """The remediation's primary key, read defensively (a detached row can drop it)."""
+    value = getattr(row, "id", None)
+    if value is None:
+        value = getattr(getattr(row, "dict", None), "get", lambda _k: None)("id")
+    if value is None:
+        raise ValueError("The remediation row has no id.")
+    return int(value)
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -140,31 +150,53 @@ def _observe_execution(execution: Execution, analysis: Analysis | None) -> dict[
     return observe_mod.observe_dict(execution.raw_trace or {}, payload)
 
 
-def session_attempts(db: Session, execution_pk: int) -> list[Remediation]:
+def session_attempts(db: Session, execution_pk: Any) -> list[Remediation]:
     return list(
         db.scalars(
-            select(Remediation).where(Remediation.execution_pk == execution_pk).order_by(Remediation.attempt)
+            select(Remediation)
+            .where(Remediation.execution_pk == _key(execution_pk))
+            .order_by(Remediation.attempt)
         ).all()
     )
 
 
-def attempts_used(db: Session, execution_pk: Any) -> int:
+def attempts_used(db: Session, execution_pk: Any, until: Any = None) -> int:
     # ``.scalars()`` yields rows, so take the first of one column rather than
     # the row itself (which ``.scalar()`` would hand back).
-    return int(
-        db.scalars(select(func.count(Remediation.id)).where(Remediation.execution_pk == _key(execution_pk))).first() or 0
-    )
+    statement = select(func.count(Remediation.id)).where(Remediation.execution_pk == _key(execution_pk))
+    if until is not None:
+        # The loop counts the attempts made *before* this turn: its own row is
+        # inserted before verification runs, and must not be counted twice.
+        statement = statement.where(Remediation.id < int(until))
+    return int(db.scalars(statement).first() or 0)
 
 
-def events_for(db: Session, execution_pk: int) -> list[AgentEvent]:
+def events_for(db: Session, execution_pk: Any) -> list[AgentEvent]:
     return list(
         db.scalars(
-            select(AgentEvent).where(AgentEvent.execution_pk == execution_pk).order_by(AgentEvent.id)
+            select(AgentEvent).where(AgentEvent.execution_pk == _key(execution_pk)).order_by(AgentEvent.id)
         ).all()
     )
 
 
-def tried_actions(db: Session, execution_pk: int) -> list[str]:
+# A plan the operator can still act on. ``not_verified`` is *not* one: that
+# attempt is finished, and the loop's own next step replaces it.
+OPEN_STATUSES = {PROPOSED, AWAITING_APPROVAL, EXECUTED, ACTION_REFUSED}
+
+# Declared after the statuses above so the helper reads naturally.
+def _has_open_attempt(db: Session, execution_pk: Any) -> bool:
+    """Is there a plan the operator can still act on?"""
+    return bool(
+        db.scalars(
+            select(Remediation.id).where(
+                Remediation.execution_pk == _key(execution_pk),
+                Remediation.status.in_(tuple(OPEN_STATUSES)),
+            )
+        ).first()
+    )
+
+
+def tried_actions(db: Session, execution_pk: Any) -> list[str]:
     """Actions that were executed (or executed and failed to verify)."""
     return [
         row.action_id
@@ -501,7 +533,9 @@ def submit_verification(
     remediation.verified_at = _now()
     remediation.verification_execution_pk = followup.id
     remediation.status = VERIFIED if verdict["resolved"] else NOT_VERIFIED
+    db.flush()
     redact_agent_row(remediation)
+
 
     _event(
         db,
@@ -610,6 +644,18 @@ def _learn_continue(
     )
 
     limit = max_attempts()
+    # Anything live (or in a state that can still move) means the loop already
+    # has somewhere to go; proposing another plan would stack up.
+    if _has_open_attempt(db, original.id):
+        _event(
+            db,
+            original.id,
+            "learn",
+            "session-stopped",
+            "The session stopped: an earlier plan is still open, so no new attempt was proposed.",
+            remediation_id=remediation.id,
+        )
+        return
     used = attempts_used(db, original.id)
     if used >= limit:
         _event(
@@ -625,13 +671,20 @@ def _learn_continue(
     # Continue the loop from the follow-up trace: that is the newest observation.
     decision = decide_mod.decide(_observe_execution(followup, follow_analysis))
     previous = tried_actions(db, original.id)
-    plan = remediate_mod.build_plan(
-        decision["action_id"], decision, attempt=used + 1, previous_actions=previous
-    )
+    # If the action we would pick has already failed here, take the next
+    # applicable one instead of re-proposing a dead end; with nothing left, the
+    # escalation action is the honest answer.
+    action_id = decision["action_id"]
+    if action_id in previous:
+        alternatives = remediate_mod.alternatives_for(decision.get("failure_category"), previous)
+        action_id = alternatives[0] if alternatives else "reanalyze-rules"
+        decision = {**decision, "action_reason": "The action that fits first was already tried without success, so the next applicable one is proposed."}
+    attempt_no = used + 1
+    plan = remediate_mod.build_plan(action_id, decision, attempt=attempt_no, previous_actions=previous)
     next_row = Remediation(
         execution_pk=original.id,
         analysis_id=follow_analysis.id,
-        attempt=used + 1,
+        attempt=attempt_no,
         decision=decision,
         action_id=plan["action_id"],
         action_type=plan["action_type"],
@@ -668,7 +721,7 @@ def summary(db: Session, execution_pk: int) -> dict[str, Any]:
     resolved = any(row.verification_status == verify_mod.VERIFIED_RESOLVED for row in rows)
     stopped = [e for e in events if e.kind == "session-stopped"]
     return {
-        "execution_pk": execution_pk,
+        "execution_pk": _key(execution_pk),
         "attempts_used": len(rows),
         "attempt_limit": limit,
         "attempts_left": max(0, limit - len(rows)),
