@@ -101,8 +101,24 @@ def get_execution(execution_pk: int, db: Session = Depends(get_session), _: None
             # For a run with no failure: what is worth knowing instead of a
             # root cause (retries, a slow step, a large payload).
             "observations": build_observations(execution.raw_trace or {}, latest),
+            # The diagnostic agent's loop for this run: plans, approvals,
+            # actions, verifications and the activity log behind them.
+            "agent": _agent_payload(db, execution_pk),
         }
     )
+
+
+def _agent_payload(db: Session, execution_pk: int) -> dict:
+    """The agent loop for one execution, in the shape the detail page renders."""
+    from app.agent import session as agent_session
+    from app.api.deps import agent_event_to_dict, remediation_to_dict
+
+    data = agent_session.summary(db, execution_pk)
+    return {
+        **{k: v for k, v in data.items() if k not in {"remediations", "events"}},
+        "remediations": [remediation_to_dict(row) for row in data["remediations"]],
+        "events": [agent_event_to_dict(event) for event in data["events"]],
+    }
 
 
 @router.delete("/executions/{execution_pk}")

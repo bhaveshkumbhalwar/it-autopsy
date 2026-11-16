@@ -63,6 +63,9 @@ class Execution(Base):
     # retry succeeded"). Kept so the detail page can say why a run is healthy.
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     redactions: Mapped[int] = mapped_column(Integer, default=0)
+    # Set only when the agent's remediation was verified against a follow-up
+    # trace: the status says "recovered", and this says why.
+    resolution: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     # sha256 of the normalized trace: the same trace is one execution, not many.
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     analysis_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -115,6 +118,76 @@ class Analysis(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
     execution: Mapped[Execution] = relationship(back_populates="analyses")
+
+
+class Remediation(Base):
+    """One turn of the agent loop: plan -> approval -> action -> verification.
+
+    A session is every remediation row sharing an ``execution_pk``; ``attempt``
+    numbers them, so the whole loop can be replayed in order and the attempt
+    limit is enforced from the same table it is recorded in.
+    """
+
+    __tablename__ = "remediations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    execution_pk: Mapped[int] = mapped_column(ForeignKey("executions.id", ondelete="CASCADE"), index=True)
+    analysis_id: Mapped[int | None] = mapped_column(
+        ForeignKey("analyses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    attempt: Mapped[int] = mapped_column(Integer, default=1, index=True)
+
+    # ---- what the agent decided
+    decision: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # ---- the plan
+    action_id: Mapped[str] = mapped_column(String(60), index=True)
+    action_type: Mapped[str] = mapped_column(String(20), default="recommendation")
+    risk: Mapped[str] = mapped_column(String(20), default="low")
+    status: Mapped[str] = mapped_column(String(30), default="proposed", index=True)
+    plan: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    # ---- approval
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    approval_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # ---- action execution
+    execution_result: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # ---- verification
+    verification: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    verification_status: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    verification_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The follow-up trace this was verified against, kept so the evidence the
+    # verdict rests on can be inspected later.
+    verification_execution_pk: Mapped[int | None] = mapped_column(
+        ForeignKey("executions.id", ondelete="SET NULL"), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+
+    execution: Mapped["Execution"] = relationship(foreign_keys=[execution_pk])
+
+
+class AgentEvent(Base):
+    """The agent's activity log: one row per step of Observe/Analyze/Decide/Act/Verify/Learn."""
+
+    __tablename__ = "agent_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    execution_pk: Mapped[int] = mapped_column(ForeignKey("executions.id", ondelete="CASCADE"), index=True)
+    remediation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("remediations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    phase: Mapped[str] = mapped_column(String(20), index=True)
+    kind: Mapped[str] = mapped_column(String(60))
+    summary: Mapped[str] = mapped_column(Text)
+    detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
 class Setting(Base):

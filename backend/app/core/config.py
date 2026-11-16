@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Put back any missing sample run at startup. Off in tests, which build
     # their own database and must not find demo rows in it.
     seed_demos: bool = True
+    # How many remediation attempts one diagnostic session may use before it
+    # stops and reports. Verification is the loop's only exit.
+    agent_max_attempts: int = 3
 
     # Database. SQLite by default; set DATABASE_URL=postgresql+psycopg://...
     # to move to PostgreSQL (the SQLAlchemy models are dialect agnostic).

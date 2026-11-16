@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import executions, ingest, reports
+from app.api import agent, executions, ingest, reports
 from app.core.config import settings
 from app.db.database import init_db
 
@@ -125,6 +125,8 @@ def create_app() -> FastAPI:
     routers = (ingest.router, executions.router, reports.router)
     for router in routers:
         app.include_router(router, prefix="/api")
+
+    app.include_router(agent.router, prefix="/api")
 
     @app.get("/api")
     def root() -> dict[str, str]:

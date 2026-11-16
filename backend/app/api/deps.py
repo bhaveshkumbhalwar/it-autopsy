@@ -10,7 +10,7 @@ from fastapi import HTTPException, Request, status
 
 from app.core.config import settings
 from app.core.redact import redact_obj, redact_secret
-from app.db.database import Analysis, Execution
+from app.db.database import AgentEvent, Analysis, Execution, Remediation
 
 
 def sanitize(payload: Any) -> Any:
@@ -78,6 +78,71 @@ def redact_analysis_on_write(analysis: Analysis) -> None:
         value = getattr(analysis, field, None)
         if value:
             setattr(analysis, field, redact_obj(value, settings.llm_api_key))
+
+
+def redact_agent_row(row: Any) -> None:
+    """Mask secrets in an agent row's JSON fields before it is stored.
+
+    A plan carries text derived from the trace (an error message, a tool
+    argument), so it goes through the same redaction as an analysis.
+    """
+    for field in ("decision", "plan", "execution_result", "verification"):
+        value = getattr(row, field, None)
+        if value:
+            setattr(row, field, redact_obj(value, settings.llm_api_key))
+    for field in ("approval_note",):
+        value = getattr(row, field, None)
+        if isinstance(value, str):
+            setattr(row, field, redact_secret(value, settings.llm_api_key)[0])
+
+
+def remediation_to_dict(remediation: Remediation, include_detail: bool = True) -> dict[str, Any]:
+    """One remediation turn, as the API returns it."""
+    data = {
+        "id": remediation.id,
+        "execution_pk": remediation.execution_pk,
+        "analysis_id": remediation.analysis_id,
+        "attempt": remediation.attempt,
+        "action_id": remediation.action_id,
+        "action_type": remediation.action_type,
+        "risk": remediation.risk,
+        "status": remediation.status,
+        "title": (remediation.plan or {}).get("title"),
+        "requires_approval": remediation.requires_approval,
+        "approved": remediation.approved,
+        "approved_by": remediation.approved_by,
+        "approved_at": remediation.approved_at.isoformat() if remediation.approved_at else None,
+        "executed_at": remediation.executed_at.isoformat() if remediation.executed_at else None,
+        "verification_status": remediation.verification_status,
+        "verification_mode": remediation.verification_mode,
+        "verified_at": remediation.verified_at.isoformat() if remediation.verified_at else None,
+        "verification_execution_pk": remediation.verification_execution_pk,
+        "created_at": remediation.created_at.isoformat() if remediation.created_at else None,
+    }
+    if include_detail:
+        data.update(
+            {
+                "decision": remediation.decision or {},
+                "plan": remediation.plan or {},
+                "execution_result": remediation.execution_result or {},
+                "verification": remediation.verification or {},
+                "approval_note": remediation.approval_note,
+            }
+        )
+    return data
+
+
+def agent_event_to_dict(event: AgentEvent) -> dict[str, Any]:
+    return {
+        "id": event.id,
+        "execution_pk": event.execution_pk,
+        "remediation_id": event.remediation_id,
+        "phase": event.phase,
+        "kind": event.kind,
+        "summary": event.summary,
+        "detail": event.detail or {},
+        "created_at": event.created_at.isoformat() if event.created_at else None,
+    }
 
 
 def _primary_title(analysis: Analysis) -> str | None:
@@ -178,6 +243,8 @@ def execution_to_dict(
         "created_at": execution.created_at.isoformat() if execution.created_at else None,
         "analysis_count": len(execution.analyses) if execution.analyses is not None else 0,
         "content_hash": (execution.content_hash or "")[:16],
+        # Only set when a remediation was verified: why this run is "recovered".
+        "resolution": execution.resolution or {},
     }
     if latest_analysis is not None:
         data["latest_analysis"] = analysis_to_dict(latest_analysis, include_heavy=False)

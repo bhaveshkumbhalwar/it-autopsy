@@ -30,6 +30,7 @@ ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "content_hash": "VARCHAR(64)",
         "analysis_count": "INTEGER NOT NULL DEFAULT 0",
         "retry_count": "INTEGER NOT NULL DEFAULT 0",
+        "resolution": "JSON NOT NULL DEFAULT '{}'",
     },
     "analyses": {
         "confidence_factors": "JSON NOT NULL DEFAULT '[]'",
