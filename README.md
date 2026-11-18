@@ -13,7 +13,7 @@ API boundary
 
 ---
 
-## Layout
+## Layout. 
 
 ```
 backend/    FastAPI + SQLAlchemy + SQLite (Postgres-ready), analysis engine, tests
