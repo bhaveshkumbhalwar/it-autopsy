@@ -1,7 +1,7 @@
 # Agent Autopsy — project handoff summary
 
 This file is written to be handed to another AI so it can understand the project
-without reading every source file. Everything below is verifiable from the code
+without reading every source file. Everything below is verifiable from the code 
 in this folder.
 
 ---
