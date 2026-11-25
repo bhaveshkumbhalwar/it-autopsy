@@ -1,4 +1,4 @@
-# Agent Autopsy
+# Agent Autopsy 
 
 Trace debugging and root-cause analysis for AI agents. Paste or upload an agent
 trace (OpenAI, Anthropic, LangSmith, OTLP/GenAI, MCP or generic JSON/JSONL), get a
